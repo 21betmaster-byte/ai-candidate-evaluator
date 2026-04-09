@@ -14,7 +14,6 @@ from dataclasses import dataclass
 
 @dataclass
 class RenderedEmail:
-    subject: str
     body: str
     template_key: str
 
@@ -27,7 +26,7 @@ def _wrap(name: str | None, body: str, company: str) -> str:
         f"Cheers,\n"
         f"The {company} Hiring Team\n\n"
         f"---\n"
-        f"If you think something went wrong, just reply to this email and we'll take a look."
+        f"If you think something went wrong, reach out to us at care@plumhq.com and we'll take a look."
     )
 
 
@@ -39,7 +38,6 @@ def acknowledgment(name: str | None, company: str) -> RenderedEmail:
         "Sit tight — good things are coming."
     )
     return RenderedEmail(
-        subject="We got your application — and we're already impressed 👀",
         body=_wrap(name, body, company),
         template_key="acknowledgment",
     )
@@ -52,7 +50,6 @@ def pass_decision(name: str | None, next_steps: str, company: str) -> RenderedEm
         "Looking forward to the next chapter!"
     )
     return RenderedEmail(
-        subject="You made the cut! 🎉 Here's what's next",
         body=_wrap(name, body, company),
         template_key="pass_decision",
     )
@@ -66,7 +63,6 @@ def fail_decision(name: str | None, reason_snippet: str, company: str) -> Render
         "Keep building — and don't be a stranger if future roles catch your eye."
     )
     return RenderedEmail(
-        subject=f"Thanks for applying to {company} 🙏",
         body=_wrap(name, body, company),
         template_key="fail_decision",
     )
@@ -81,7 +77,6 @@ def missing_items(name: str | None, missing: list[str], company: str) -> Rendere
         "Almost there — we're rooting for you!"
     )
     return RenderedEmail(
-        subject="Almost there — we just need a couple more things 📎",
         body=_wrap(name, body, company),
         template_key="missing_items",
     )
@@ -95,7 +90,6 @@ def non_pdf_attachment(name: str | None, company: str) -> RenderedEmail:
         "Small ask, big impact!"
     )
     return RenderedEmail(
-        subject="Quick heads up about your resume format 📄",
         body=_wrap(name, body, company),
         template_key="non_pdf_attachment",
     )
@@ -109,7 +103,6 @@ def duplicate_update(name: str | None, company: str) -> RenderedEmail:
         "Thanks for keeping us on our toes!"
     )
     return RenderedEmail(
-        subject="Updated application received! 🔄",
         body=_wrap(name, body, company),
         template_key="duplicate_update",
     )
@@ -117,15 +110,13 @@ def duplicate_update(name: str | None, company: str) -> RenderedEmail:
 
 def gibberish(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "We received your email and gave it our best shot, but we couldn't quite figure out what it says. "
-        "Our AI is smart, but apparently not THAT smart.\n\n"
+        "We received your email but we couldn't quite make sense of it.\n\n"
         "If you meant to apply for a role, here's what we need: a resume (PDF), a link to your GitHub "
         "profile, and a link to your portfolio or projects. Just reply to this email with those and we'll "
         "get the ball rolling.\n\n"
-        "No judgment — inboxes are weird sometimes."
+        "If this wasn't meant as an application, reach out to care@plumhq.com and our team will help you out."
     )
     return RenderedEmail(
-        subject="We got your email but... we're a bit confused 🤔",
         body=_wrap(name, body, company),
         template_key="gibberish",
     )
@@ -139,22 +130,21 @@ def spam_sales(name: str | None, company: str) -> RenderedEmail:
         "Good luck out there!"
     )
     return RenderedEmail(
-        subject="Re: Your email",
         body=_wrap(name, body, company),
         template_key="spam_sales",
     )
 
 
-def question_response(name: str | None, answer: str, company: str) -> RenderedEmail:
+def question_response(name: str | None, company: str) -> RenderedEmail:
     body = (
         "Thanks for reaching out! We love the curiosity.\n\n"
-        f"{answer}\n\n"
-        "When you're ready to apply, just reply to this email (or send a fresh one) with your resume "
+        "We're not set up to answer questions through this inbox, but our team at care@plumhq.com would "
+        "be happy to help. Drop them a line and they'll get back to you.\n\n"
+        "When you're ready to apply, just reply to this email with your resume "
         "(PDF), GitHub link, and portfolio link.\n\n"
         "We hope to see your application soon!"
     )
     return RenderedEmail(
-        subject="Great question! Here's the scoop 💡",
         body=_wrap(name, body, company),
         template_key="question_response",
     )
@@ -168,7 +158,6 @@ def empty_email(name: str | None, company: str) -> RenderedEmail:
         "We'll be here when you're ready!"
     )
     return RenderedEmail(
-        subject="We got your email — but it was a bit... empty 📭",
         body=_wrap(name, body, company),
         template_key="empty_email",
     )
@@ -184,7 +173,6 @@ def portfolio_is_linkedin(name: str | None, company: str) -> RenderedEmail:
         "Show us what you've built!"
     )
     return RenderedEmail(
-        subject="Quick note about your portfolio link 🔗",
         body=_wrap(name, body, company),
         template_key="portfolio_is_linkedin",
     )
@@ -200,7 +188,6 @@ def github_unreachable(name: str | None, company: str) -> RenderedEmail:
         "We're eager to see your code!"
     )
     return RenderedEmail(
-        subject="We couldn't access your GitHub profile 🔒",
         body=_wrap(name, body, company),
         template_key="github_unreachable",
     )
@@ -215,7 +202,6 @@ def portfolio_unreachable(name: str | None, company: str) -> RenderedEmail:
         "We really do want to see your work!"
     )
     return RenderedEmail(
-        subject="Heads up — your portfolio link isn't loading 🌐",
         body=_wrap(name, body, company),
         template_key="portfolio_unreachable",
     )
@@ -231,7 +217,6 @@ def reminder(name: str | None, missing: list[str], company: str) -> RenderedEmai
         "Reply to this email with the missing pieces and we'll jump right on it!"
     )
     return RenderedEmail(
-        subject="Friendly nudge about your application 👋",
         body=_wrap(name, body, company),
         template_key="reminder",
     )
@@ -245,7 +230,6 @@ def rapid_emails(name: str | None, company: str) -> RenderedEmail:
         "Stay tuned!"
     )
     return RenderedEmail(
-        subject="Got it — we're on it! ✅",
         body=_wrap(name, body, company),
         template_key="rapid_emails",
     )
@@ -260,7 +244,6 @@ def processing_error_notice(name: str | None, company: str) -> RenderedEmail:
         "Sorry for the bump in the road!"
     )
     return RenderedEmail(
-        subject="We hit a snag with your application — quick resend? 🛠️",
         body=_wrap(name, body, company),
         template_key="processing_error_notice",
     )
@@ -275,7 +258,6 @@ def caveat_acknowledgment(name: str | None, company: str) -> RenderedEmail:
         "You'll hear back from us once they've had a chance to dig in. Nothing more needed from you for now."
     )
     return RenderedEmail(
-        subject="Thanks for the context — we're taking a closer look 👀",
         body=_wrap(name, body, company),
         template_key="caveat_acknowledgment",
     )
@@ -286,12 +268,10 @@ def unclassifiable(name: str | None, company: str) -> RenderedEmail:
         "We got your email and appreciate you reaching out. We're not 100% sure if this was meant to be a "
         "job application though.\n\n"
         "If you're looking to apply, here's what we need: resume (PDF), GitHub link, and portfolio link. "
-        "If you had a different question, just reply and let us know — a human on our team will get back "
-        "to you.\n\n"
+        "If you had a different question, drop a line to care@plumhq.com and our team will get back to you.\n\n"
         "Either way, glad you're here!"
     )
     return RenderedEmail(
-        subject="Thanks for your email! Quick question though 🤔",
         body=_wrap(name, body, company),
         template_key="unclassifiable",
     )

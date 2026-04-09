@@ -147,13 +147,12 @@ class FakeGmail:
     def mark_processed(self, message_id: str) -> None:
         self.processed.add(message_id)
 
-    def send_email(self, to: str, subject: str, body_text: str, in_reply_to=None, thread_id=None) -> str:
+    def send_email(self, to: str, body_text: str, in_reply_to=None, thread_id=None) -> str:
         self._seq += 1
         msg_id = f"out-{self._seq}"
         self.sent.append({
             "message_id": msg_id,
             "to": to,
-            "subject": subject,
             "body": body_text,
         })
         return msg_id
@@ -398,6 +397,11 @@ def client(db: Session) -> Iterator[TestClient]:
     from app.main import app
     from app.db import get_db
 
+    # Tables are already created by the _schema fixture via
+    # Base.metadata.create_all(). Skip Alembic migrations at startup because
+    # they emit Postgres-specific DDL (e.g. '{}'::jsonb) that SQLite rejects.
+    os.environ["SKIP_STARTUP_MIGRATIONS"] = "1"
+
     def _override_get_db():
         s = _TestingSession()
         try:
@@ -409,6 +413,7 @@ def client(db: Session) -> Iterator[TestClient]:
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+    os.environ.pop("SKIP_STARTUP_MIGRATIONS", None)
 
 
 # ---------------------------- Helpers exposed to tests ----------------------------

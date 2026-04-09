@@ -147,7 +147,7 @@ def _render_template(template_key: str, payload: dict, company: str) -> tpl.Rend
     if template_key == "spam_sales":
         return tpl.spam_sales(name, company)
     if template_key == "question_response":
-        return tpl.question_response(name, payload.get("answer", ""), company)
+        return tpl.question_response(name, company)
     if template_key == "empty_email":
         return tpl.empty_email(name, company)
     if template_key == "portfolio_is_linkedin":
@@ -235,19 +235,8 @@ def handle_ingest_email(db: Session, job: Job) -> None:
 
     if category == "question":
         _log_inbound(db, email, None, "question")
-        # Generate a quick answer with Sonnet inline (cheap, one round trip)
-        from app.llm import call_sonnet
-        try:
-            answer = call_sonnet(
-                "You are a helpful, on-brand recruiter answering a candidate's question briefly. "
-                "Be friendly, 2-3 sentences max. Do not invent specific salary numbers or commitments.",
-                f"Question: {cls.get('question_text') or email.body_text[:1500]}",
-                max_tokens=300,
-            ).strip()
-        except Exception:
-            answer = "Happy to help — drop us a note with your specific question and a human will get back to you."
         _enqueue_send_template(db, None, "question_response", {
-            "name": email.sender_name, "to": email.sender_email, "answer": answer,
+            "name": email.sender_name, "to": email.sender_email,
         })
         gmail.mark_processed(message_id)
         return
@@ -753,13 +742,13 @@ def handle_send_template_email(db: Session, job: Job) -> None:
         raise ValueError(f"send_template_email missing 'to' (template={template_key})")
     settings = _settings_row(db)
     rendered = _render_template(template_key, payload, settings.company_name)
-    msg_id = gmail.send_email(to=to, subject=rendered.subject, body_text=rendered.body)
+    msg_id = gmail.send_email(to=to, body_text=rendered.body)
     db.add(EmailLog(
         candidate_id=job.candidate_id,
         gmail_message_id=msg_id,
         direction="out",
         sender=get_settings().gmail_address,
-        subject=rendered.subject,
+        subject=f"(reply: {rendered.template_key})",
         body_snippet=rendered.body[:1000],
         template_used=rendered.template_key,
     ))
@@ -781,13 +770,13 @@ def handle_send_reminder(db: Session, job: Job) -> None:
     missing = payload.get("missing") or cand.missing_items or []
     settings = _settings_row(db)
     rendered = tpl.reminder(cand.name, missing, settings.company_name)
-    msg_id = gmail.send_email(to=cand.email, subject=rendered.subject, body_text=rendered.body)
+    msg_id = gmail.send_email(to=cand.email, body_text=rendered.body)
     db.add(EmailLog(
         candidate_id=cand.id,
         gmail_message_id=msg_id,
         direction="out",
         sender=get_settings().gmail_address,
-        subject=rendered.subject,
+        subject="(reply: reminder)",
         body_snippet=rendered.body[:1000],
         template_used="reminder",
     ))

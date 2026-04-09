@@ -61,13 +61,18 @@ def maybe_poll_inbox(state: dict) -> None:
     finally:
         db.close()
     now = time.time()
-    if now - state.get("last_poll_at", 0) >= interval_min * 60:
+    elapsed = now - state.get("last_poll_at", 0)
+    if elapsed >= interval_min * 60:
+        log.info("worker.poll_starting", interval_min=interval_min, elapsed_sec=round(elapsed))
         state["last_poll_at"] = now
         try:
             count = poll_inbox()
             log.info("inbox.poll", new_messages=count)
         except Exception as e:
             log.exception("inbox.poll_failed", error=str(e))
+    else:
+        remaining = int(interval_min * 60 - elapsed)
+        log.debug("worker.poll_skipped", next_poll_in_sec=remaining)
 
 
 def main():
@@ -89,6 +94,7 @@ def main():
         if not jobs:
             time.sleep(s.worker_poll_interval_seconds)
             continue
+        log.info("worker.jobs_claimed", count=len(jobs), types=[j.type for j in jobs])
         for j in jobs:
             run_one_job(j)
 

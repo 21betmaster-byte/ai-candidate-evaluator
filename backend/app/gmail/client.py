@@ -179,14 +179,18 @@ def _ensure_label(service, name: str) -> str:
     return created["id"]
 
 
-def send_email(to: str, subject: str, body_text: str, in_reply_to: str | None = None, thread_id: str | None = None) -> str:
-    """Send an email and return the Gmail message ID."""
+def send_email(to: str, body_text: str, in_reply_to: str | None = None, thread_id: str | None = None) -> str:
+    """Send a reply email and return the Gmail message ID.
+
+    All outbound emails are replies to an existing thread so that they
+    land in the same conversation and avoid spam filters.  The subject
+    is omitted — Gmail auto-derives ``Re: <original>`` from the thread.
+    """
     s = get_settings()
     service = _build_service()
     msg = EmailMessage()
     msg["To"] = to
     msg["From"] = s.gmail_address
-    msg["Subject"] = subject
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to

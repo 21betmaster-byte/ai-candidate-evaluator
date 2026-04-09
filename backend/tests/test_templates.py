@@ -5,7 +5,7 @@ def test_acknowledgment_renders():
     e = tpl.acknowledgment("Alice", "Plum")
     assert "Alice" in e.body
     assert "Plum" in e.body
-    assert e.subject
+    assert e.template_key == "acknowledgment"
 
 
 def test_acknowledgment_does_not_claim_received_items():
