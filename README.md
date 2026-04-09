@@ -1,16 +1,29 @@
 # AI Candidate Evaluator
 
-Email-driven hiring agent built for the Plum Builder's Residency exercise.
-Candidates email a dedicated Gmail inbox with their resume, GitHub link,
-and portfolio link. The agent classifies the email, parses the resume,
-fetches GitHub + portfolio context, scores the candidate against a
-**hiring-manager-authored rubric** (Sonnet → Opus), and replies with a
-pass / fail / missing-items decision.
+## The Problem
 
-A Next.js dashboard with email/password auth surfaces the pipeline to the
-hiring manager and lets them author the rubric in-product.
+Screening inbound job applications is one of the most time-consuming bottlenecks in hiring. A hiring manager receives dozens of emails with resumes, GitHub profiles, and portfolio links — then manually opens each attachment, cross-references work history against role requirements, checks GitHub for real shipping signal, reviews portfolio quality, and drafts a personalized response. This process takes 15-30 minutes per candidate, is prone to inconsistency (different reviewers weight different things), and creates a poor candidate experience when responses are slow or generic.
 
-## Architecture (one paragraph)
+For small teams that can't afford a dedicated recruiting function, this means either burning engineering or founder time on screening, or letting strong candidates slip through the cracks because nobody got to their email fast enough.
+
+## The Solution
+
+An autonomous email agent that handles the entire candidate screening workflow end-to-end: from receiving the application email to sending a personalized pass/fail decision — with zero human intervention for clear-cut cases, and smart escalation for borderline ones.
+
+**What it does:**
+- **Monitors a Gmail inbox** for inbound applications and automatically processes new emails
+- **Parses resumes** (PDF/DOCX), extracts structured data, and handles messy real-world inputs (multi-column layouts, non-English text, scanned documents)
+- **Fetches external signals** — GitHub repos, contribution history, languages used; portfolio/project sites with SPA-aware scraping via headless Chromium
+- **Evaluates candidates against a hiring-manager-defined rubric** using a two-model architecture: Claude Sonnet structures the raw data, Claude Opus scores it against weighted dimensions the hiring manager defines (e.g. "technical depth", "shipped products", "design taste")
+- **Sends personalized email responses** — acceptance with next steps, rejection with specific constructive feedback, or a request for missing materials
+- **Escalates ambiguous cases** to human review with full context, rather than making a bad automated call
+- **Exposes a dashboard** where the hiring manager can review candidates, edit the scoring rubric, override decisions, and trigger inbox polling on demand
+
+**Why it matters:** A hiring manager defines their rubric once in the dashboard (what matters, how much each dimension weighs), and the agent handles everything else. New candidates get evaluated in minutes instead of days, with consistent scoring against the same criteria every time. The hiring manager only spends time on the cases that genuinely need human judgment.
+
+Built for the [Plum Builder's Residency](plum_builders_residency_brief.md) exercise — a 5-day sprint to build an agent that handles a real communication channel and automates a business workflow, tested live with real inputs.
+
+## Architecture
 
 A FastAPI backend on Railway polls a Gmail inbox at a configurable
 interval. Each new message is enqueued in a Postgres-backed `jobs` table;
