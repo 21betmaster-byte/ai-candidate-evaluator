@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Intelligence Core | Editorial Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#c5c1f7",
+                        "on-primary-container": "#fffbff",
+                        "tertiary": "#95442d",
+                        "secondary-fixed": "#e3dfff",
+                        "on-primary-fixed": "#3f0015",
+                        "on-tertiary-fixed-variant": "#79301a",
+                        "on-surface": "#2b1423",
+                        "inverse-on-surface": "#ffecf4",
+                        "tertiary-container": "#b35c43",
+                        "inverse-surface": "#422838",
+                        "surface-bright": "#fff8f9",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#45426f",
+                        "primary": "#b8004a",
+                        "on-primary": "#ffffff",
+                        "on-background": "#2b1423",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "surface-container": "#ffe8f2",
+                        "primary-fixed": "#ffd9de",
+                        "primary-container": "#dd2561",
+                        "on-secondary-fixed": "#191541",
+                        "outline": "#8e6f73",
+                        "tertiary-fixed-dim": "#ffb5a0",
+                        "primary-fixed-dim": "#ffb2be",
+                        "on-primary-fixed-variant": "#900039",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary": "#5c5988",
+                        "surface-variant": "#ffd8ec",
+                        "surface-container-low": "#fff0f5",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#ffe0ef",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#ffd8ec",
+                        "on-surface-variant": "#5a4044",
+                        "secondary-container": "#cec9ff",
+                        "surface": "#fff8f9",
+                        "surface-dim": "#f7cfe4",
+                        "on-tertiary-fixed": "#3b0900",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#ffdbd1",
+                        "outline-variant": "#e3bdc2",
+                        "surface-tint": "#bc004c",
+                        "on-secondary-container": "#565381",
+                        "inverse-primary": "#ffb2be",
+                        "background": "#fff8f9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Epilogue"],
+                        "body": ["Inter"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input[type="range"] {
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #ffe8f2;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            margin-top: -6px;
+            background-color: #FF4757;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-custom {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-x-hidden">
+<!-- SideNavBar Anchor -->
+<aside class="bg-[#fff0f5] dark:bg-[#1C0715] h-screen w-64 fixed left-0 top-0 overflow-y-auto flex flex-col py-8 space-y-8 z-40">
+<div class="px-8">
+<span class="text-xl font-black text-[#1C0715] dark:text-[#fff8f9] uppercase tracking-widest font-headline">The Curator</span>
+<p class="text-[10px] opacity-60 font-label tracking-widest uppercase mt-1">Recruitment Intelligence</p>
+</div>
+<nav class="flex-grow space-y-2">
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-3 px-6 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-headline font-bold tracking-tight">Candidates</span>
+</a>
+<a class="text-[#FF4757] font-extrabold flex items-center gap-4 py-3 px-6 bg-[#ffffff] dark:bg-[#2b1423] rounded-r-full" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-headline font-bold tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="px-6 space-y-4">
+<div class="space-y-3">
+<div class="flex items-center gap-2">
+<button class="flex-grow flex items-center justify-center gap-2 py-3 bg-on-surface/10 text-on-surface/40 font-headline font-bold rounded-full cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined text-sm animate-spin-custom">sync</span>
+<span class="text-xs">Polling Inbox...</span>
+</button>
+<button class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white dark:bg-surface-container-highest text-[#FF4757] rounded-full shadow-sm hover:bg-error-container transition-colors active:scale-90" title="Stop Polling">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+</div>
+<p class="text-[10px] text-center opacity-60 font-semibold text-[#2b1423] dark:text-[#fff8f9]">Last polled: 24-Oct-2023 10:30 AM IST</p>
+</div>
+<div class="pt-8 space-y-2">
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-2 px-4 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="text-xs font-semibold">Help</span>
+</a>
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-2 px-4 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-xs font-semibold">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- TopNavBar Anchor -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-50 bg-[#fff8f9]/80 dark:bg-[#1C0715]/80 backdrop-blur-md shadow-[0px_12px_32px_rgba(43,20,35,0.06)] flex justify-between items-center px-12 py-6">
+<div class="flex items-center gap-8">
+<span class="text-lg font-black text-[#1C0715] dark:text-[#fff8f9] font-headline">Editorial Intelligence</span>
+<div class="hidden md:flex gap-6">
+<a class="font-headline text-sm font-semibold text-[#2b1423] dark:text-[#fff8f9] opacity-70 hover:opacity-100 hover:text-[#FF4757] transition-all" href="#">Open Roles</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="font-headline text-sm font-semibold text-[#FF4757] border-b-2 border-[#FF4757] pb-1 cursor-pointer active:scale-98">New Role</button>
+<span class="material-symbols-outlined text-[#2b1423] cursor-pointer">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden">
+<img alt="Professional headshot of a female hiring manager with a confident expression, soft studio lighting on neutral background" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQVn8xkDc1EZK7b2CYqxDUt2rQh9ECY2RBz4U42xuGo4NHHI0etujn5Ar3Dv1aqOzEaO3bySGCpAnzK7ENIlnZrrKzg5LO-uGFN_4fZPMjNcn2YnCcZ1qnESY7PbVk0wAn8eCepVJh4jP4Wf7aHNje6BMvCrm3Y0ti15L_3FB1SQU-leUjDru5wEXQ66JpKsksNf7Bl6NmkRxzCWVau456lFywtgcq944ssgJzRaMnfafC2Z1ryuLquanZ3E5seYV6wk7qSPuQIcU"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-32 pb-24 px-12">
+<header class="mb-12">
+<h1 class="font-headline text-5xl font-black text-on-surface tracking-tighter mb-2 italic">Intelligence Core</h1>
+<p class="text-on-surface-variant max-w-xl font-label text-sm uppercase tracking-widest opacity-70">Define the logic. Calibrate the editorial eye. Automation with authority.</p>
+</header>
+<div class="grid grid-cols-12 gap-8">
+<!-- Left Column: Ingestion & Tiers -->
+<div class="col-span-12 lg:col-span-5 space-y-8">
+<!-- Section: Ingestion -->
+<section class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)]">
+<div class="flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-[#FF4757]">move_to_inbox</span>
+<h2 class="font-headline text-xl font-bold">Ingestion</h2>
+</div>
+<div class="space-y-8">
+<div class="relative">
+<label class="block text-[10px] font-label font-bold text-on-surface-variant uppercase tracking-widest mb-2">Gmail Inbox Source</label>
+<input class="w-full bg-surface-container-lowest border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-[#FF4757] transition-colors py-2 font-body text-sm font-medium" type="email" value="hiring@editorial-intel.com"/>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="text-[10px] font-label font-bold text-on-surface-variant uppercase tracking-widest">Polling Frequency</label>
+<span class="text-xs font-headline font-bold text-[#FF4757]">Every 15 mins</span>
+</div>
+<input class="w-full" max="120" min="5" type="range" value="15"/>
+<div class="flex justify-between text-[10px] font-medium opacity-50">
+<span>Real-time</span>
+<span>2 Hours</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Tiers -->
+<section class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)]">
+<div class="flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-[#FF4757]">leaderboard</span>
+<h2 class="font-headline text-xl font-bold">Scoring Tiers</h2>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
+<div>
+<h3 class="font-headline font-bold text-sm">Auto-Pass</h3>
+<p class="text-[10px] opacity-70">Directly moves to first interview</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold opacity-40">≥</span>
+<input class="w-16 bg-surface-container-lowest border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-[#FF4757] text-center font-headline font-black text-[#FF4757]" type="number" value="85"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg border-l-4 border-secondary">
+<div>
+<h3 class="font-headline font-bold text-sm">Manual Review</h3>
+<p class="text-[10px] opacity-70">Requires editorial eyes</p>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-12 bg-transparent border-0 border-b border-outline-variant text-center text-xs" type="number" value="40"/>
+<span class="text-[10px] opacity-40">to</span>
+<input class="w-12 bg-transparent border-0 border-b border-outline-variant text-center text-xs" type="number" value="84"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
+<div>
+<h3 class="font-headline font-bold text-sm text-error">Auto-Fail</h3>
+<p class="text-[10px] opacity-70">Automated archive</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold opacity-40">&lt;</span>
+<input class="w-16 bg-surface-container-lowest border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-[#FF4757] text-center font-headline font-black text-error" type="number" value="40"/>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Rubric Intelligence -->
+<div class="col-span-12 lg:col-span-7">
+<section class="bg-surface-container-lowest p-8 lg:p-12 rounded-xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)] h-full">
+<div class="flex items-center justify-between mb-12">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#FF4757]">psychology</span>
+<h2 class="font-headline text-2xl font-bold">Rubric Intelligence</h2>
+</div>
+<div class="px-4 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase tracking-widest">
+                        Balanced: 100%
+                    </div>
+</div>
+<div class="space-y-12">
+<!-- Weight 1 -->
+<div class="group">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h4 class="font-headline text-lg font-bold group-hover:text-[#FF4757] transition-colors">Technical Depth</h4>
+<p class="text-xs text-on-surface-variant max-w-sm">Evaluates specific tool proficiency and specialized engineering principles.</p>
+</div>
+<span class="font-headline text-3xl font-black text-[#FF4757]">35<span class="text-xs opacity-50">%</span></span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="35"/>
+</div>
+<!-- Weight 2 -->
+<div class="group">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h4 class="font-headline text-lg font-bold group-hover:text-[#FF4757] transition-colors">Shipped Products</h4>
+<p class="text-xs text-on-surface-variant max-w-sm">Proof of delivery. Analyzes history of launching complex projects.</p>
+</div>
+<span class="font-headline text-3xl font-black text-[#FF4757]">40<span class="text-xs opacity-50">%</span></span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="40"/>
+</div>
+<!-- Weight 3 -->
+<div class="group">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h4 class="font-headline text-lg font-bold group-hover:text-[#FF4757] transition-colors">Editorial Fit</h4>
+<p class="text-xs text-on-surface-variant max-w-sm">Soft skill alignment with the Digital Curator brand voice.</p>
+</div>
+<span class="font-headline text-3xl font-black text-[#FF4757]">15<span class="text-xs opacity-50">%</span></span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="15"/>
+</div>
+<!-- Weight 4 -->
+<div class="group">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h4 class="font-headline text-lg font-bold group-hover:text-[#FF4757] transition-colors">Strategic Narrative</h4>
+<p class="text-xs text-on-surface-variant max-w-sm">Assesses the candidate's ability to communicate long-term value.</p>
+</div>
+<span class="font-headline text-3xl font-black text-[#FF4757]">10<span class="text-xs opacity-50">%</span></span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="10"/>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="mt-16 pt-12 border-t-2 border-surface-container flex items-center justify-end gap-6">
+<button class="font-headline text-sm font-bold text-on-surface-variant hover:text-[#FF4757] transition-colors">
+                        Reset to Default
+                    </button>
+<button class="bg-gradient-to-br from-[#FF4757] to-[#FF4757]/80 px-8 py-4 rounded-full text-white font-headline font-black shadow-lg shadow-[#FF4757]/20 scale-100 hover:scale-105 active:scale-95 transition-all">
+                        Apply Intelligence Model
+                    </button>
+</div>
+</section>
+</div>
+</div>
+<!-- System Status Decorative Element -->
+<div class="mt-12 flex justify-center">
+<div class="bg-surface-container-low px-6 py-3 rounded-full flex items-center gap-4 text-[10px] font-bold tracking-widest text-on-surface-variant opacity-60">
+<span class="w-2 h-2 rounded-full bg-[#FF4757] animate-pulse"></span>
+            CORE VERSION 4.2.0 • ACTIVE MODEL: PRECISE_EDITORIAL_GPT4
+        </div>
+</div>
+</main>
+</body></html>

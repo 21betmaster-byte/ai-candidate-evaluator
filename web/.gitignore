@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+next-env.d.ts
+.DS_Store
+
+# Playwright artifacts
+test-results/
+playwright-report/
+.auth/
+
+# Visual regression baselines ARE committed (in tests/e2e/__screenshots__/)
+# so the suite has something to compare against in CI. Don't add them here.
+.vercel

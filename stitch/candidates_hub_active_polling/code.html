@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#c5c1f7",
+                    "on-primary-container": "#fffbff",
+                    "tertiary": "#95442d",
+                    "secondary-fixed": "#e3dfff",
+                    "on-primary-fixed": "#3f0015",
+                    "on-tertiary-fixed-variant": "#79301a",
+                    "on-surface": "#2b1423",
+                    "inverse-on-surface": "#ffecf4",
+                    "tertiary-container": "#b35c43",
+                    "inverse-surface": "#422838",
+                    "surface-bright": "#fff8f9",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#45426f",
+                    "primary": "#FF4757",
+                    "on-primary": "#ffffff",
+                    "on-background": "#2b1423",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "surface-container": "#ffe8f2",
+                    "primary-fixed": "#ffd9de",
+                    "primary-container": "#dd2561",
+                    "on-secondary-fixed": "#191541",
+                    "outline": "#8e6f73",
+                    "tertiary-fixed-dim": "#ffb5a0",
+                    "primary-fixed-dim": "#ffb2be",
+                    "on-primary-fixed-variant": "#900039",
+                    "error": "#ba1a1a",
+                    "on-tertiary-container": "#fffbff",
+                    "secondary": "#5c5988",
+                    "surface-variant": "#ffd8ec",
+                    "surface-container-low": "#fff0f5",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-high": "#ffe0ef",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#ffd8ec",
+                    "on-surface-variant": "#5a4044",
+                    "secondary-container": "#cec9ff",
+                    "surface": "#fff8f9",
+                    "surface-dim": "#f7cfe4",
+                    "on-tertiary-fixed": "#3b0900",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#ffdbd1",
+                    "outline-variant": "#e3bdc2",
+                    "surface-tint": "#bc004c",
+                    "on-secondary-container": "#565381",
+                    "inverse-primary": "#ffb2be",
+                    "background": "#fff8f9"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Epilogue"],
+                    "body": ["Inter"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .editorial-font { font-family: 'Epilogue', sans-serif; }
+        .label-font { font-family: 'Plus Jakarta Sans', sans-serif; }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar (Shared Component) -->
+<aside class="bg-[#fff0f5] dark:bg-[#1C0715] h-screen w-64 fixed left-0 top-0 overflow-y-auto flex flex-col py-8 space-y-8 no-line tonal-layering">
+<div class="px-6 mb-8">
+<h1 class="text-xl font-black text-[#1C0715] dark:text-[#fff8f9] uppercase tracking-widest editorial-font">The Curator</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] opacity-60 font-bold mt-1">Recruitment Intelligence</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active Navigation: Candidates -->
+<a class="text-[#FF4757] font-extrabold flex items-center gap-4 py-3 px-6 bg-[#ffffff] dark:bg-[#2b1423] rounded-r-full transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="label-font text-sm">Candidates</span>
+</a>
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-3 px-6 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="label-font text-sm">Settings</span>
+</a>
+</nav>
+<div class="px-6 space-y-6">
+<button class="w-full bg-surface-container-highest text-on-surface-variant/40 py-4 rounded-full font-bold flex items-center justify-center gap-2 cursor-not-allowed shadow-none" disabled="">
+<span class="material-symbols-outlined text-sm animate-spin" data-icon="progress_activity">progress_activity</span>
+                Polling Inbox...
+            </button>
+<div class="flex items-center justify-between gap-2 p-3 bg-surface-container rounded-xl">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-[#FF4757] animate-pulse"></div>
+<span class="text-xs font-semibold opacity-70">Checking...</span>
+</div>
+<button class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-sm group-hover:text-[#FF4757]" data-icon="close">close</span>
+</button>
+</div>
+<p class="text-[10px] opacity-50 font-medium mt-2 px-1">Last polled: 24-Oct-2023 10:30 AM IST</p>
+</div>
+<div class="mt-auto border-t border-outline-variant/10 pt-6">
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-3 px-6 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="label-font text-sm">Help</span>
+</a>
+<a class="text-[#2b1423]/60 dark:text-[#fff8f9]/60 flex items-center gap-4 py-3 px-6 hover:text-[#FF4757] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="label-font text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-50 bg-[#fff8f9]/80 dark:bg-[#1C0715]/80 backdrop-blur-md flex justify-between items-center px-12 py-6 tonal-shift-bottom shadow-[0px_12px_32px_rgba(43,20,35,0.06)]">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 group cursor-pointer">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-widest opacity-50 font-bold">Active Search</span>
+<div class="flex items-center gap-2">
+<span class="font-headline text-lg font-black text-[#1C0715] dark:text-[#fff8f9]">Senior Frontend Engineer</span>
+<span class="material-symbols-outlined text-[#FF4757]" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<nav class="hidden md:flex gap-8">
+<a class="text-[#FF4757] border-b-2 border-[#FF4757] pb-1 font-epilogue text-sm font-semibold" href="#">Open Roles</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<button class="bg-surface-container-highest px-6 py-2 rounded-full font-headline text-sm font-bold text-[#FF4757] active:scale-98 transition-transform">
+                New Role
+            </button>
+<div class="flex items-center gap-4 text-[#2b1423] opacity-70">
+<span class="material-symbols-outlined cursor-pointer hover:text-[#FF4757] transition-all" data-icon="notifications">notifications</span>
+<img alt="professional portrait" class="w-10 h-10 rounded-full object-cover border-2 border-primary-fixed shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6PPPvPtn3ukrgoLA9pmqs23MvJNc_Rx62plvUFvYWsPaDiwzWZJjLUdu7ABiOtKxURSZE2-QzYFn1pkb0SC2Tmcjk2L9Zz08rP8GV0J5HgRyeUPmB4PCBe7zoFPB_d5sog7ZvRP8YjNYH4Gq6HXzi_7eu06iJ_Hfi1sIwVuy1Q6_oTi1dQ3LLEUX6RkoHkrd5i2VkWH5TXA8OPirOjdxY317uhrFHPj5uZjfIu7Dharv2mrDcznDiobNgND0aFW8QIpjkSZNxBS4"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 pt-32 px-12 pb-20 min-h-screen">
+<!-- Dashboard Header / Metrics Section -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+<div class="bg-surface-container-lowest p-8 rounded-3xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)] flex flex-col gap-2">
+<span class="text-xs font-bold uppercase tracking-widest opacity-50 label-font">Total Candidates</span>
+<span class="text-5xl font-headline font-black text-[#FF4757]">1,248</span>
+<div class="mt-4 flex items-center gap-2">
+<span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">+12%</span>
+<span class="text-[10px] opacity-40 font-bold uppercase">vs last week</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-3xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)] flex flex-col gap-2">
+<span class="text-xs font-bold uppercase tracking-widest opacity-50 label-font">Manual Review</span>
+<span class="text-5xl font-headline font-black text-on-surface">42</span>
+<div class="mt-4 flex items-center gap-2">
+<span class="text-xs font-bold text-[#FF4757] bg-primary-fixed px-2 py-1 rounded-full">Priority</span>
+<span class="text-[10px] opacity-40 font-bold uppercase">Requires action</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-3xl shadow-[0px_12px_32px_rgba(43,20,35,0.04)] flex flex-col gap-2">
+<span class="text-xs font-bold uppercase tracking-widest opacity-50 label-font">Avg. Intelligence</span>
+<span class="text-5xl font-headline font-black text-on-surface">8.4</span>
+<div class="mt-4 flex items-center gap-2">
+<span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Top 5%</span>
+<span class="text-[10px] opacity-40 font-bold uppercase">Industry standard</span>
+</div>
+</div>
+</section>
+<!-- Candidate Pipeline Section -->
+<section class="bg-surface-container-low rounded-[2rem] p-4">
+<div class="px-8 py-6 flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-headline font-extrabold tracking-tight">Candidate Pipeline</h2>
+<p class="text-sm opacity-60 mt-1">Intelligence-driven selection for Senior Frontend Engineer</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface-container-lowest px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border-b-2 border-outline-variant/20">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                        Filter
+                    </button>
+<button class="bg-surface-container-lowest px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border-b-2 border-outline-variant/20">
+<span class="material-symbols-outlined text-sm" data-icon="sort">sort</span>
+                        Sort
+                    </button>
+</div>
+</div>
+<div class="flex flex-col gap-4 mt-2">
+<!-- Manual Review Row (Highlighted) -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 flex items-center justify-between border-l-4 border-[#FF4757] shadow-sm hover:translate-x-1 transition-transform cursor-pointer">
+<div class="flex items-center gap-6 w-1/4">
+<div class="relative">
+<img alt="candidate portrait" class="w-14 h-14 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiQXTpBKbGp7VpafAoxtMFm-Jf58Wx9ky_iFPTVJZIz4IOdcI9435Gvown_1Nf88BLKgaPbWTjbLa0HW2PMVliGOsTbMCuNQivf7b1pWeKTXbghvPLlOAtjptFWNwmabaHZ9SKdJdkPjofMX3zwhRc7qHMO0dTdIYRjFMG1_OrMoazwj1LoR4QffXS4D9mgwGPmI8aJ2W5kyJqpjnUxOrLJ9kxnIV6NlVptnyqrwpLCp7oxSuXLWRFNVmwYkLLB0jzoirL7wpcDSI"/>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-[#FF4757] border-2 border-white rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px] text-white" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+</div>
+<div>
+<p class="font-headline font-bold text-lg">Elena Rostova</p>
+<p class="text-xs opacity-50 font-medium">Next.js • Tailwind • 8y Exp.</p>
+</div>
+</div>
+<div class="w-1/6 flex flex-col items-center">
+<span class="text-2xl font-headline font-black text-[#FF4757]">9.8</span>
+<span class="text-[10px] uppercase font-bold opacity-40">Intelligence Score</span>
+</div>
+<div class="w-1/6 flex justify-center">
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Manual Review</span>
+</div>
+<div class="w-1/6 text-center">
+<p class="text-sm font-semibold">Oct 24, 2023</p>
+<p class="text-[10px] opacity-40 font-bold uppercase">Date Indexed</p>
+</div>
+<div class="w-1/6 flex justify-end">
+<button class="bg-[#FF4757] text-white px-8 py-3 rounded-full font-headline font-black text-sm shadow-[0_4px_14px_rgba(255,71,87,0.3)] hover:brightness-110 active:scale-95 transition-all">
+                            Review
+                        </button>
+</div>
+</div>
+<!-- Auto-Pass Row -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity cursor-pointer">
+<div class="flex items-center gap-6 w-1/4">
+<img alt="candidate portrait" class="w-14 h-14 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtaIBSaTSsmJiq3eaB8_6AID68sTMxJb5XiHUeeErWoJ01BSFrBViD6QV6j3xSpjkoEXoe_kdS_4x7QPlIDPte0DqZXTx_RKkd2ieVlv__YZpuu3WUtZbI_6K9sHJUs9g7F-AZ8yKaRwQpS7fOmFChqZwYhXYtTHNRu2ZzjhhVBZz0DlTcYp4wlBezazqKQDUzBPnUk1fmErYOj_aczITnmBzWNaRLFAGuy83Z4-CYJdDs9zWpMb3NFEp5nqI6Gl9ugA-KtquA4Ic"/>
+<div>
+<p class="font-headline font-bold text-lg">Marcus Thorne</p>
+<p class="text-xs opacity-50 font-medium">React • TypeScript • 6y Exp.</p>
+</div>
+</div>
+<div class="w-1/6 flex flex-col items-center">
+<span class="text-2xl font-headline font-black text-on-surface">8.2</span>
+<span class="text-[10px] uppercase font-bold opacity-40">Intelligence Score</span>
+</div>
+<div class="w-1/6 flex justify-center">
+<span class="bg-green-100 text-green-800 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Auto-Pass</span>
+</div>
+<div class="w-1/6 text-center">
+<p class="text-sm font-semibold">Oct 23, 2023</p>
+<p class="text-[10px] opacity-40 font-bold uppercase">Date Indexed</p>
+</div>
+<div class="w-1/6 flex justify-end gap-3">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Auto-Fail Row -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 flex items-center justify-between opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
+<div class="flex items-center gap-6 w-1/4">
+<img alt="candidate portrait" class="w-14 h-14 rounded-full object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvOz1gKunQvwRa5AW6LaENRq9Ks6HTHuN81EF7ppmAET0ceFMRAi1vwN1lDESN607cebvLJfDtZ0zDUEsKswERv4-38cPqSnTjz5mIDg4R4rDpk42e7lPXTZogiQngDIMxB7LI09QF561HNE5iWR5pkYeEALPYZeR2qeAhLnfF8cvM52rIPdycm3Ds7LPR6YW8B6NAXDWxZGkP0PuxrmW1auoPe4FfZ2HFWaAOY_Tj-pK09QGlklzoUDqRcMSdlTMQQPujq-Mjea0"/>
+<div>
+<p class="font-headline font-bold text-lg">Jordan Lee</p>
+<p class="text-xs opacity-50 font-medium">Vue.js • PHP • 3y Exp.</p>
+</div>
+</div>
+<div class="w-1/6 flex flex-col items-center">
+<span class="text-2xl font-headline font-black text-on-surface-variant">4.5</span>
+<span class="text-[10px] uppercase font-bold opacity-40">Intelligence Score</span>
+</div>
+<div class="w-1/6 flex justify-center">
+<span class="bg-error-container text-on-error-container px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Auto-Fail</span>
+</div>
+<div class="w-1/6 text-center">
+<p class="text-sm font-semibold">Oct 22, 2023</p>
+<p class="text-[10px] opacity-40 font-bold uppercase">Date Indexed</p>
+</div>
+<div class="w-1/6 flex justify-end gap-3">
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="archive">archive</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container text-on-surface-variant hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Insights Sidebar / Mini-bento for detailed view -->
+<section class="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div class="bg-[#FF4757] text-white p-10 rounded-[3rem] relative overflow-hidden group">
+<div class="relative z-10">
+<h3 class="text-4xl font-headline font-black leading-tight">Editorial Insight: The Talent Gap</h3>
+<p class="mt-6 opacity-80 text-lg leading-relaxed">
+                        Currently, 84% of candidates in this pool exceed the technical threshold, but only 12% align with the "Product-First" cultural pillar of your editorial mandate.
+                    </p>
+<button class="mt-8 bg-white text-[#FF4757] px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:scale-105 transition-transform">
+                        Read Full Analysis
+                    </button>
+</div>
+<!-- Decorative element -->
+<div class="absolute -right-20 -bottom-20 w-80 h-80 bg-primary-container/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000"></div>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="bg-surface-container-highest p-8 rounded-[2rem] flex flex-col justify-between">
+<span class="material-symbols-outlined text-[#FF4757] text-4xl" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<div>
+<p class="text-3xl font-headline font-black">2.4s</p>
+<p class="text-xs uppercase font-bold opacity-50 mt-1">Average Index Time</p>
+</div>
+</div>
+<div class="bg-[#e3dfff] p-8 rounded-[2rem] flex flex-col justify-between">
+<span class="material-symbols-outlined text-[#5c5988] text-4xl" data-icon="trending_up">trending_up</span>
+<div>
+<p class="text-3xl font-headline font-black">+42</p>
+<p class="text-xs uppercase font-bold opacity-50 mt-1">New Leads Today</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest col-span-2 p-8 rounded-[2rem] shadow-sm border-b-4 border-outline-variant/10">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold uppercase tracking-widest opacity-50">Pipeline Health</span>
+<span class="text-sm font-bold text-[#FF4757]">Excellent</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden flex">
+<div class="h-full bg-[#FF4757] w-[70%]"></div>
+<div class="h-full bg-primary-container w-[15%]"></div>
+<div class="h-full bg-secondary-fixed w-[15%]"></div>
+</div>
+<div class="flex gap-4 mt-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-[#FF4757]"></div>
+<span class="text-[10px] font-bold opacity-60">Qualified</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<span class="text-[10px] font-bold opacity-60">Review</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary-fixed"></div>
+<span class="text-[10px] font-bold opacity-60">Archived</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

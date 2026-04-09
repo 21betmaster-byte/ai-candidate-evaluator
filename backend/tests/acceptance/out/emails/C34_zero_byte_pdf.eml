@@ -1,0 +1,24 @@
+From: Zero Byte <zero+c34@example.com>
+To: Plum Builders Hiring <jobs@plumbuilders.example>
+Subject: Application =?utf-8?b?4oCU?= Builder in Residence
+Date: Wed, 08 Apr 2026 17:29:37 +0530
+Message-ID: <177564957781.87190.2252092574658995542@plumbuilders.example>
+X-Scenario-Id: C34_zero_byte_pdf
+X-Scenario-Group: C
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============7324989577250221471=="
+
+--===============7324989577250221471==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Resume attached. https://github.com/zero  https://zero.dev
+
+--===============7324989577250221471==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="empty.pdf"
+MIME-Version: 1.0
+
+
+--===============7324989577250221471==--

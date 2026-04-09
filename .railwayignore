@@ -1,0 +1,14 @@
+.venv/
+**/.venv/
+venv/
+**/__pycache__/
+*.pyc
+web/node_modules/
+web/.next/
+**/node_modules/
+.DS_Store
+.git/
+stitch/
+tests/
+backend/tests/
+*.md

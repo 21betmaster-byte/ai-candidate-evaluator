@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Imports Material Symbols via the CDN link in the layout head. This
+ * file just sets the font-variation defaults so icons render at the
+ * right weight without cluttering every JSX call-site. */
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-family: "Material Symbols Outlined";
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: "FILL" 1;
+}
+
+/* Rubric weight sliders (settings page). Restyles the native range input
+ * so it matches the editorial design tokens. Copied from the stitch mock. */
+input[type="range"] {
+  appearance: none;
+  background: transparent;
+  width: 100%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background-color: #ffd8ec;
+  border-radius: 2px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background-color: #ffd8ec;
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -6px;
+  background-color: #ff4757;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+}
+input[type="range"]::-moz-range-thumb {
+  background-color: #ff4757;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin-custom { animation: spin 1s linear infinite; }
+
+html, body { background-color: #fff8f9; color: #2b1423; }

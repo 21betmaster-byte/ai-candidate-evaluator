@@ -1,0 +1,25 @@
+From: Apple Pages <pages+c38@example.com>
+To: Plum Builders Hiring <jobs@plumbuilders.example>
+Subject: Application =?utf-8?b?4oCU?= Builder in Residence
+Date: Wed, 08 Apr 2026 17:29:38 +0530
+Message-ID: <177564957857.87190.2773680573214784191@plumbuilders.example>
+X-Scenario-Id: C38_pages_rtf_txt_odt
+X-Scenario-Group: C
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============2849716225016257265=="
+
+--===============2849716225016257265==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Mac user here, resume attached.
+
+--===============2849716225016257265==
+Content-Type: application/vnd.apple.pages
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="resume.pages"
+MIME-Version: 1.0
+
+UEsDBAoAAAA=
+
+--===============2849716225016257265==--
