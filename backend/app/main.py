@@ -1,5 +1,8 @@
 import logging
 import os
+import threading
+import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -33,15 +36,67 @@ def _run_migrations() -> None:
     command.upgrade(cfg, "head")
 
 
-app = FastAPI(title="AI Candidate Evaluator", version="0.1.0")
+def _run_worker_loop(stop_event: threading.Event) -> None:
+    """Run the job worker loop in a background thread.
+
+    Mirrors app.jobs.worker.main() but uses a threading.Event for shutdown
+    instead of signal handlers (which only work in the main thread).
+    Auto-restarts on unexpected errors with a brief delay.
+    """
+    from app.config import get_settings
+    from app.db import SessionLocal
+    from app.jobs import queue
+    from app.jobs.worker import maybe_poll_inbox, run_one_job
+
+    s = get_settings()
+    state: dict = {"last_poll_at": 0}
+    log.info("embedded worker started (poll_interval=%ss)", s.worker_poll_interval_seconds)
+
+    while not stop_event.is_set():
+        try:
+            maybe_poll_inbox(state)
+            db = SessionLocal()
+            try:
+                jobs = queue.claim_due(db, limit=5)
+            finally:
+                db.close()
+            if not jobs:
+                stop_event.wait(timeout=s.worker_poll_interval_seconds)
+                continue
+            log.info("worker: claimed %d job(s): %s", len(jobs), [j.type for j in jobs])
+            for j in jobs:
+                run_one_job(j)
+        except Exception:
+            log.exception("worker loop error — restarting in 5s")
+            stop_event.wait(timeout=5)
+
+    log.info("embedded worker stopped")
 
 
-@app.on_event("startup")
-def _on_startup() -> None:
-    if os.getenv("SKIP_STARTUP_MIGRATIONS") == "1":
-        log.info("SKIP_STARTUP_MIGRATIONS=1, skipping in-process alembic upgrade")
-        return
-    _run_migrations()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: run migrations
+    if os.getenv("SKIP_STARTUP_MIGRATIONS") != "1":
+        _run_migrations()
+
+    # Start embedded worker thread
+    stop_event = threading.Event()
+    worker_thread = threading.Thread(
+        target=_run_worker_loop,
+        args=(stop_event,),
+        daemon=True,
+        name="worker",
+    )
+    worker_thread.start()
+
+    yield
+
+    # Shutdown: stop worker gracefully
+    stop_event.set()
+    worker_thread.join(timeout=10)
+
+
+app = FastAPI(title="AI Candidate Evaluator", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

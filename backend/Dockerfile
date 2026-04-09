@@ -19,5 +19,5 @@ COPY backend/ ./
 ENV PORT=8000
 EXPOSE 8000
 
-# Default = API. Worker service overrides CMD to: python -m app.jobs.worker
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# Single service: API + embedded worker thread (migrations run in-process at startup)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
