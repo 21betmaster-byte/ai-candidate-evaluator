@@ -311,8 +311,8 @@ def test_e2e_github_candidate_error(
     run_pipeline()
 
     cand = db.query(Candidate).filter(Candidate.email == "gh@example.com").one()
-    # Pipeline now continues through scoring even when GitHub is unreachable
-    assert cand.status in ("auto_pass", "auto_fail", "manual_review"), f"expected scored status, got {cand.status}"
+    assert cand.status == "incomplete"
+    assert "github_unreachable" in _outbound_templates(db)
     fail_logs = [l for l in _logs(db, cand.id) if l.step == "fetch_github" and l.level == "warn"]
     assert fail_logs, "should have a warn-level fetch_github log"
 

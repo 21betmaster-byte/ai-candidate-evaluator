@@ -581,10 +581,12 @@ def handle_fetch_github(db: Session, job: Job) -> None:
         except GitHubCandidateError as e:
             ctx["outcome"] = "candidate_error"
             ctx["error"] = str(e)[:200]
-            log_event(db, cand.id, "fetch_github", f"candidate-side error (continuing without GitHub data): {e}", level="warn")
-            ev.github_data = None
-            db.add(ev)
-            queue.enqueue(db, type="fetch_portfolio", candidate_id=cand.id, payload={"evaluation_id": ev.id})
+            log_event(db, cand.id, "fetch_github", f"candidate-side error: {e}", level="warn")
+            missing = list(cand.missing_items or [])
+            gh_item = "a working public GitHub profile link"
+            if gh_item not in missing:
+                missing.append(gh_item)
+            _mark_incomplete_and_remind(db, cand, missing, template="github_unreachable")
             return
         except GitHubInfraError:
             raise  # retry via queue
@@ -625,10 +627,17 @@ def handle_fetch_portfolio(db: Session, job: Job) -> None:
         except PortfolioCandidateError as e:
             ctx["outcome"] = "candidate_error"
             ctx["error"] = str(e)[:200]
-            log_event(db, cand.id, "fetch_portfolio", f"candidate-side error (continuing without portfolio data): {e}", level="warn")
-            ev.portfolio_data = None
-            db.add(ev)
-            queue.enqueue(db, type="structure_profile", candidate_id=cand.id, payload={"evaluation_id": ev.id})
+            log_event(db, cand.id, "fetch_portfolio", f"portfolio rejected: {e}", level="warn")
+            missing = list(cand.missing_items or [])
+            if "linkedin" in str(e).lower():
+                item = "a real portfolio or projects link (LinkedIn isn't enough)"
+                template = "portfolio_is_linkedin"
+            else:
+                item = "a working portfolio link (the one you sent didn't load)"
+                template = "portfolio_unreachable"
+            if item not in missing:
+                missing.append(item)
+            _mark_incomplete_and_remind(db, cand, missing, template=template)
             return
         except PortfolioInfraError:
             raise
