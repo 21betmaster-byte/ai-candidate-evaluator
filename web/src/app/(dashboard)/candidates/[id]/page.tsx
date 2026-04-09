@@ -35,7 +35,7 @@ export default async function CandidateDetailPage({
   const profile = (ev?.structured_profile ?? null) as ProfileShape | null;
   const displayName = candidate.name ?? profile?.name ?? candidate.email.split("@")[0];
   const scores = ev?.scores ?? {};
-  const overall = ev?.overall_score != null ? (ev.overall_score / 10).toFixed(1) : "—";
+  const overall = ev?.overall_score != null ? Math.round(ev.overall_score).toString() : "—";
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -343,7 +343,7 @@ function RubricCard({ scores }: { scores: Record<string, ScoreEntry> }) {
                   {key.replace(/_/g, " ")}
                 </span>
                 <span className="text-2xl font-headline font-black text-primary">
-                  {(score / 10).toFixed(1)}
+                  {Math.round(score)}
                 </span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">

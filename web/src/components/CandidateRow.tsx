@@ -63,9 +63,8 @@ function initialsOf(name: string | null, email: string) {
 
 export default function CandidateRow({ row }: { row: Row }) {
   const meta = STATUS_META[row.status];
-  // Backend stores 0–100; mocks render the 0–9.9 "intelligence" scale.
   const score =
-    row.overall_score != null ? (row.overall_score / 10).toFixed(1) : "—";
+    row.overall_score != null ? Math.round(row.overall_score).toString() : "—";
   const displayName = row.name ?? row.email.split("@")[0];
   const emphasiseClasses = meta.emphasise
     ? "border-l-4 border-primary shadow-sm"

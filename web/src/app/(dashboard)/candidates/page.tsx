@@ -111,8 +111,7 @@ function computeMetrics(rows: Row[]) {
   const avg =
     scored.length > 0
       ? scored.reduce((sum, r) => sum + (r.overall_score ?? 0), 0) /
-        scored.length /
-        10
+        scored.length
       : null;
   return {
     total: rows.length,
