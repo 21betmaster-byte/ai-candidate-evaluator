@@ -79,21 +79,26 @@ async def lifespan(app: FastAPI):
     if os.getenv("SKIP_STARTUP_MIGRATIONS") != "1":
         _run_migrations()
 
-    # Start embedded worker thread
+    # Start embedded worker thread (skipped in tests — SQLite has no
+    # FOR UPDATE SKIP LOCKED, so the worker would crash and pollute the
+    # shared in-memory connection).
     stop_event = threading.Event()
-    worker_thread = threading.Thread(
-        target=_run_worker_loop,
-        args=(stop_event,),
-        daemon=True,
-        name="worker",
-    )
-    worker_thread.start()
+    worker_thread: threading.Thread | None = None
+    if os.getenv("SKIP_EMBEDDED_WORKER") != "1":
+        worker_thread = threading.Thread(
+            target=_run_worker_loop,
+            args=(stop_event,),
+            daemon=True,
+            name="worker",
+        )
+        worker_thread.start()
 
     yield
 
     # Shutdown: stop worker gracefully
     stop_event.set()
-    worker_thread.join(timeout=10)
+    if worker_thread is not None:
+        worker_thread.join(timeout=10)
 
 
 app = FastAPI(title="AI Candidate Evaluator", version="0.1.0", lifespan=lifespan)

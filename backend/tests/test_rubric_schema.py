@@ -89,7 +89,7 @@ class TestRubricDimension:
         with pytest.raises(ValidationError):
             RubricDimension(
                 key="technical_depth",
-                description="x" * 501,
+                description="x" * 2001,
                 weight=10,
             )
 

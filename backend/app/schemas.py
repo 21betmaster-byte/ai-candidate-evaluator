@@ -110,7 +110,7 @@ class RubricDimension(BaseModel):
     """
 
     key: str = Field(..., min_length=1, max_length=64)
-    description: str = Field(..., min_length=1, max_length=500)
+    description: str = Field(..., min_length=1, max_length=2000)
     weight: int = Field(..., ge=0, le=100)
 
     @field_validator("key")

@@ -420,7 +420,10 @@ def client(db: Session) -> Iterator[TestClient]:
     # Tables are already created by the _schema fixture via
     # Base.metadata.create_all(). Skip Alembic migrations at startup because
     # they emit Postgres-specific DDL (e.g. '{}'::jsonb) that SQLite rejects.
+    # Also skip the embedded worker thread — SQLite has no FOR UPDATE SKIP
+    # LOCKED, so the worker would crash and pollute the shared connection.
     os.environ["SKIP_STARTUP_MIGRATIONS"] = "1"
+    os.environ["SKIP_EMBEDDED_WORKER"] = "1"
 
     def _override_get_db():
         s = _TestingSession()
@@ -434,6 +437,7 @@ def client(db: Session) -> Iterator[TestClient]:
         yield c
     app.dependency_overrides.clear()
     os.environ.pop("SKIP_STARTUP_MIGRATIONS", None)
+    os.environ.pop("SKIP_EMBEDDED_WORKER", None)
 
 
 # ---------------------------- Helpers exposed to tests ----------------------------
