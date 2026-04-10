@@ -986,7 +986,7 @@ def test_outbound_emails_include_thread_id_and_in_reply_to(
     enqueue_ingest("thr-1")
     run_pipeline()
 
-    # Every outbound email should carry the thread_id and in_reply_to
+    # Every outbound email should carry thread_id, in_reply_to, and subject
     assert len(gmail_fake.sent) > 0, "expected at least one outbound email"
     for sent_msg in gmail_fake.sent:
         assert sent_msg["thread_id"] == "thread-abc", (
@@ -994,6 +994,9 @@ def test_outbound_emails_include_thread_id_and_in_reply_to(
         )
         assert sent_msg["in_reply_to"] == rfc_msg_id, (
             f"outbound email missing in_reply_to: {sent_msg}"
+        )
+        assert sent_msg["subject"] == "Application", (
+            f"outbound email missing or wrong subject: {sent_msg}"
         )
 
 
@@ -1023,6 +1026,7 @@ def test_thread_id_persisted_on_candidate(
     cand = db.query(Candidate).filter(Candidate.email == "persist@example.com").one()
     assert cand.gmail_thread_id == "thread-persist"
     assert cand.rfc822_message_id == "<persist@mail.gmail.com>"
+    assert cand.last_inbound_subject == "Application"
 
 
 # ==================== Regression: duplicate acknowledgement emails ====================

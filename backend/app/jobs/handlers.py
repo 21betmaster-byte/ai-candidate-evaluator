@@ -310,6 +310,7 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     cand.last_inbound_message_id = email.message_id
     cand.gmail_thread_id = email.thread_id or cand.gmail_thread_id
     cand.rfc822_message_id = email.rfc822_message_id or cand.rfc822_message_id
+    cand.last_inbound_subject = email.subject or cand.last_inbound_subject
     db.add(cand)
 
     _log_step(db, cand.id, "ingest", "email ingested", meta={"message_id": message_id, "duplicate": is_duplicate})
@@ -850,14 +851,9 @@ def handle_structure_profile(db: Session, job: Job) -> None:
     db.add(ev)
 
     if profile.get("_parse_error"):
-        log_event(db, cand.id, "structure_profile", "parse error — halting pipeline for manual review", level="error", meta={
+        log_event(db, cand.id, "structure_profile", "parse error — proceeding with salvaged profile", level="warn", meta={
             "raw_snippet": (profile.get("_raw") or "")[:300],
         })
-        cand.status = "manual_review"
-        cand.review_source = "structure_profile"
-        cand.review_reason = "LLM returned unparseable profile — needs manual review"
-        db.add(cand)
-        return
 
     queue.enqueue(db, type="score", candidate_id=cand.id, payload={"evaluation_id": ev.id})
 
@@ -969,6 +965,7 @@ def handle_send_template_email(db: Session, job: Job) -> None:
     to = payload.get("to")
     thread_id: str | None = None
     in_reply_to: str | None = None
+    subject: str | None = None
     if job.candidate_id:
         cand = db.get(Candidate, job.candidate_id)
         if cand:
@@ -976,11 +973,12 @@ def handle_send_template_email(db: Session, job: Job) -> None:
                 to = cand.email
             thread_id = cand.gmail_thread_id
             in_reply_to = cand.rfc822_message_id
+            subject = cand.last_inbound_subject
     if not to:
         raise ValueError(f"send_template_email missing 'to' (template={template_key})")
     settings = _settings_row(db)
     rendered = _render_template(template_key, payload, settings.company_name)
-    msg_id = gmail.send_email(to=to, body_text=rendered.body, in_reply_to=in_reply_to, thread_id=thread_id)
+    msg_id = gmail.send_email(to=to, body_text=rendered.body, in_reply_to=in_reply_to, thread_id=thread_id, subject=subject)
     db.add(EmailLog(
         candidate_id=job.candidate_id,
         gmail_message_id=msg_id,
@@ -1017,6 +1015,7 @@ def handle_send_reminder(db: Session, job: Job) -> None:
     msg_id = gmail.send_email(
         to=cand.email, body_text=rendered.body,
         in_reply_to=cand.rfc822_message_id, thread_id=cand.gmail_thread_id,
+        subject=cand.last_inbound_subject,
     )
     db.add(EmailLog(
         candidate_id=cand.id,

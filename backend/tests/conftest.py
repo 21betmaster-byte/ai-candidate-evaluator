@@ -147,7 +147,7 @@ class FakeGmail:
     def mark_processed(self, message_id: str) -> None:
         self.processed.add(message_id)
 
-    def send_email(self, to: str, body_text: str, in_reply_to=None, thread_id=None) -> str:
+    def send_email(self, to: str, body_text: str, in_reply_to=None, thread_id=None, subject=None) -> str:
         self._seq += 1
         msg_id = f"out-{self._seq}"
         self.sent.append({
@@ -156,6 +156,7 @@ class FakeGmail:
             "body": body_text,
             "in_reply_to": in_reply_to,
             "thread_id": thread_id,
+            "subject": subject,
         })
         return msg_id
 

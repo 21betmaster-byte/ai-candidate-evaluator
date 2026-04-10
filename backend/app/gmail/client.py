@@ -204,18 +204,30 @@ def strip_quoted_text(body: str) -> str:
     return '\n'.join(lines).strip()
 
 
-def send_email(to: str, body_text: str, in_reply_to: str | None = None, thread_id: str | None = None) -> str:
-    """Send a reply email and return the Gmail message ID.
+def send_email(
+    to: str,
+    body_text: str,
+    in_reply_to: str | None = None,
+    thread_id: str | None = None,
+    subject: str | None = None,
+) -> str:
+    """Send an email and return the Gmail message ID.
 
-    All outbound emails are replies to an existing thread so that they
-    land in the same conversation and avoid spam filters.  The subject
-    is omitted — Gmail auto-derives ``Re: <original>`` from the thread.
+    For threaded replies, provide ``thread_id``, ``in_reply_to``, and
+    ``subject`` (the original inbound subject — ``Re:`` is prepended
+    automatically if not already present).  Gmail requires all three to
+    place the message in the same conversation.
     """
     s = get_settings()
     service = _build_service()
     msg = EmailMessage()
     msg["To"] = to
     msg["From"] = s.gmail_address
+    if subject:
+        # Ensure the subject starts with "Re: " for reply threading.
+        if not subject.lower().startswith("re:"):
+            subject = f"Re: {subject}"
+        msg["Subject"] = subject
     if in_reply_to:
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = in_reply_to
