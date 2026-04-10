@@ -205,7 +205,7 @@ def parse_json_block(text) -> dict
 - `parse_json_block` tolerates code fences and unbalanced preambles — extracts the first balanced `{...}`.
 
 ## 8. Email Templates (`app/emails/templates.py`)
-17 brand-voice plain-text templates (acknowledgment, pass/fail decision, missing items, non-PDF attachment, question response, auto-reply bounce, spam rejection, …). `RenderedEmail` dataclass (subject, body, template_key). Guarantee: no numeric scores or rubric terms in candidate-facing copy.
+16 brand-voice plain-text templates (pass/fail decision, missing items, non-PDF attachment, question response, auto-reply bounce, spam rejection, …). `RenderedEmail` dataclass (subject, body, template_key). Guarantee: no numeric scores or rubric terms in candidate-facing copy.
 
 ## 9. Auth (`app/auth.py`)
 - `require_user()` dependency. Empty `ALLOWED_EMAILS` = dev mode (reads `X-User-Email` or returns `"dev@local"`).

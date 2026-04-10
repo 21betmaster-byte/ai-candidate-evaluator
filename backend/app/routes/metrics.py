@@ -151,7 +151,7 @@ def _safe_ratio(numerator: int, denominator: int) -> float | None:
 
 def _compute_technical(db: Session) -> TechnicalMetrics:
     # Latencies
-    ack_latency = _latency(db, "ingest", "started", "send_email", "sent acknowledgment%")
+    first_response_latency = _latency(db, "ingest", "started", "send_email", "sent %")
     eval_latency = _latency(db, "ingest", "started", "score", "completed")
     decision_latency = _decision_email_latency(db)
 
@@ -171,7 +171,7 @@ def _compute_technical(db: Session) -> TechnicalMetrics:
     override = _safe_ratio(manual, decided)
 
     return TechnicalMetrics(
-        ack_latency_seconds=ack_latency,
+        first_response_latency_seconds=first_response_latency,
         evaluation_latency_seconds=eval_latency,
         decision_email_latency_seconds=decision_latency,
         processing_error_rate=error_rate,

@@ -141,6 +141,7 @@ class SettingsModel(BaseModel):
     reminder_hours: int = Field(..., ge=1, le=336)
     incomplete_expiry_days: int = Field(..., ge=1, le=30)
     company_name: str = Field(..., min_length=1, max_length=128)
+    last_polled_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -168,7 +169,7 @@ class NotTrackedMetric(BaseModel):
 
 
 class TechnicalMetrics(BaseModel):
-    ack_latency_seconds: float | None
+    first_response_latency_seconds: float | None
     evaluation_latency_seconds: float | None
     decision_email_latency_seconds: float | None
     processing_error_rate: float | None

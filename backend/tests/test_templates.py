@@ -1,20 +1,6 @@
 from app.emails import templates as tpl
 
 
-def test_acknowledgment_renders():
-    e = tpl.acknowledgment("Alice", "Plum")
-    assert "Alice" in e.body
-    assert "Plum" in e.body
-    assert e.template_key == "acknowledgment"
-
-
-def test_acknowledgment_does_not_claim_received_items():
-    e = tpl.acknowledgment("Alice", "Plum")
-    assert "your resume" not in e.body
-    assert "your GitHub" not in e.body
-    assert "your portfolio" not in e.body
-
-
 def test_fail_decision_no_scores_in_body():
     e = tpl.fail_decision("Bob", "We're looking for a bit more depth.", "Plum")
     assert "score" not in e.body.lower()

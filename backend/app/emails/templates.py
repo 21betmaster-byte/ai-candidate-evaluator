@@ -30,19 +30,6 @@ def _wrap(name: str | None, body: str, company: str) -> str:
     )
 
 
-def acknowledgment(name: str | None, company: str) -> RenderedEmail:
-    body = (
-        "Your application just landed and it's already making friends with the other resumes in our inbox.\n\n"
-        "We're warming up our reading glasses as we speak. We'll take a look and reach out if we need "
-        "anything from you.\n\n"
-        "Sit tight — good things are coming."
-    )
-    return RenderedEmail(
-        body=_wrap(name, body, company),
-        template_key="acknowledgment",
-    )
-
-
 def pass_decision(name: str | None, next_steps: str, company: str) -> RenderedEmail:
     body = (
         "We've reviewed your application and — drumroll — you've caught our attention.\n\n"
@@ -71,7 +58,7 @@ def fail_decision(name: str | None, reason_snippet: str, company: str) -> Render
 def missing_items(name: str | None, missing: list[str], company: str) -> RenderedEmail:
     bullets = "\n".join(f"  • {m}" for m in missing)
     body = (
-        "We got your email and we're excited to dig in — but we're missing a few pieces of the puzzle.\n\n"
+        "Your application just landed and we're excited to dig in — but we're missing a few pieces of the puzzle.\n\n"
         f"Here's what we still need:\n{bullets}\n\n"
         "Just reply to this email with the missing bits and we'll take it from there.\n\n"
         "Almost there — we're rooting for you!"
@@ -84,7 +71,7 @@ def missing_items(name: str | None, missing: list[str], company: str) -> Rendere
 
 def non_pdf_attachment(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "Thanks for reaching out — we weren't able to read the file you attached.\n\n"
+        "Your application just landed — thanks for sending it over! Unfortunately, we weren't able to read the file you attached.\n\n"
         "Could you resend your resume as a PDF or Word document (.pdf or .docx)? Just reply to this email "
         "with the file attached and we'll pick right back up.\n\n"
         "Small ask, big impact!"
@@ -165,7 +152,7 @@ def empty_email(name: str | None, company: str) -> RenderedEmail:
 
 def portfolio_is_linkedin(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "We see you shared your LinkedIn profile — and we appreciate the transparency! But we're actually "
+        "Your application just landed and we're excited to take a look! We see you shared your LinkedIn profile — and we appreciate the transparency! But we're actually "
         "looking for a portfolio or project showcase: a personal site, a GitHub Pages project, a Behance, "
         "or anything that shows off what you've built.\n\n"
         "LinkedIn is great for networking, but we want to see your work in action. Reply with a link to "
@@ -180,7 +167,7 @@ def portfolio_is_linkedin(name: str | None, company: str) -> RenderedEmail:
 
 def github_unreachable(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "We tried checking out your GitHub profile, but it looks like the link doesn't work or the profile "
+        "We received your application and started digging in right away! We tried checking out your GitHub profile, but it looks like the link doesn't work or the profile "
         "might be set to private.\n\n"
         "Could you double-check and send us an updated link? Make sure your profile is set to public so we "
         "can see your repos and contributions. Reply to this email with the corrected link and we'll take "
@@ -195,7 +182,7 @@ def github_unreachable(name: str | None, company: str) -> RenderedEmail:
 
 def portfolio_unreachable(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "We tried visiting your portfolio but the link seems to be down or not loading. It might be a "
+        "We received your application and started reviewing it! We tried visiting your portfolio but the link seems to be down or not loading. It might be a "
         "temporary thing, but we wanted to let you know.\n\n"
         "Could you double-check the URL and send us an updated link if needed? Reply to this email and "
         "we'll retry.\n\n"

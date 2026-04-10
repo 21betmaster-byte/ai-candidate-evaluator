@@ -90,9 +90,8 @@ def test_e2e_happy_path_complete_application(
         "speed_and_bias_to_action", "pedigree_and_relevance", "communication_clarity"
     }
 
-    # Outbound emails: acknowledgment + pass_decision
+    # Outbound emails: pass_decision (no standalone acknowledgment)
     templates = _outbound_templates(db)
-    assert "acknowledgment" in templates
     assert "pass_decision" in templates
 
     # Full log sequence per PRD §3 "Logging"
@@ -570,7 +569,7 @@ def test_duplicate_resume_then_links_merges_into_complete_application(
     # Pipeline ran to completion against the merged data
     assert cand.status in ("auto_pass", "auto_fail", "manual_review")
     assert new_ev.tier is not None
-    # No duplicate-update or acknowledgment for re-applications
+    # No duplicate-update for re-applications
     assert "duplicate_update" not in _outbound_templates(db)
 
 
@@ -1029,33 +1028,17 @@ def test_thread_id_persisted_on_candidate(
     assert cand.last_inbound_subject == "Application"
 
 
-# ==================== Regression: duplicate acknowledgement emails ====================
+# ==================== Regression: duplicate emails on re-application ====================
 #
-# Bug 5: re-applications were getting both "acknowledgment" and
-# "duplicate_update" emails. Now neither should be sent for re-applications.
+# Bug 5: re-applications were getting "duplicate_update" emails.
+# Now re-applications are processed silently — no duplicate_update is sent.
 
 
-def test_first_application_gets_exactly_one_acknowledgment(
+def test_reapplication_gets_no_duplicate_update(
     db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
 ):
-    """A first-time application must receive exactly one acknowledgment email."""
-    gmail_fake.deliver(make_inbound(
-        "ack-1", "firsttime@example.com", "First", "Application",
-        "https://github.com/first  https://first.dev",
-        attachments=[pdf_attachment()],
-    ))
-    enqueue_ingest("ack-1")
-    run_pipeline()
-
-    ack_count = sum(1 for t in _outbound_templates(db) if t == "acknowledgment")
-    assert ack_count == 1, f"expected exactly 1 acknowledgment, got {ack_count}"
-
-
-def test_reapplication_gets_no_acknowledgment_or_duplicate_update(
-    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
-):
-    """A re-application must NOT produce any acknowledgment or duplicate_update
-    email. The pipeline processes silently and sends only the decision/missing
+    """A re-application must NOT produce a duplicate_update email.
+    The pipeline processes silently and sends only the decision/missing
     items email as appropriate."""
     # First application
     _setup_candidate_with(
@@ -1065,11 +1048,6 @@ def test_reapplication_gets_no_acknowledgment_or_duplicate_update(
         body="https://github.com/noack  https://noack.dev",
         attachments=[pdf_attachment()],
     )
-    # Count templates after first application
-    first_templates = list(_outbound_templates(db))
-    ack_count_before = sum(1 for t in first_templates if t == "acknowledgment")
-    dup_count_before = sum(1 for t in first_templates if t == "duplicate_update")
-    assert ack_count_before == 1  # first app gets one ack
 
     # Second application
     gmail_fake.deliver(make_inbound(
@@ -1081,23 +1059,18 @@ def test_reapplication_gets_no_acknowledgment_or_duplicate_update(
     run_pipeline()
 
     all_templates = _outbound_templates(db)
-    ack_count_after = sum(1 for t in all_templates if t == "acknowledgment")
-    dup_count_after = sum(1 for t in all_templates if t == "duplicate_update")
+    dup_count = sum(1 for t in all_templates if t == "duplicate_update")
 
-    # Should still be exactly 1 acknowledgment (from the first email) and 0 duplicate_update
-    assert ack_count_after == 1, (
-        f"expected no additional acknowledgment for re-application, got {ack_count_after} total"
-    )
-    assert dup_count_after == 0, (
-        f"expected 0 duplicate_update emails, got {dup_count_after}"
+    assert dup_count == 0, (
+        f"expected 0 duplicate_update emails, got {dup_count}"
     )
 
 
-def test_reply_to_missing_items_gets_no_acknowledgment(
+def test_reply_to_missing_items_gets_no_duplicate_update(
     db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
 ):
     """When a candidate replies to a missing_items email with the required
-    links, they should NOT receive any acknowledgment — only the pipeline
+    links, they should NOT receive a duplicate_update — only the pipeline
     result email (decision or further missing items)."""
     import app.jobs.handlers as h
 
@@ -1111,7 +1084,6 @@ def test_reply_to_missing_items_gets_no_acknowledgment(
     )
     cand = db.query(Candidate).filter(Candidate.email == "mireply@example.com").one()
     assert cand.status == "incomplete"
-    templates_before = list(_outbound_templates(db))
 
     # Reply with the missing links
     monkeypatch.setattr(h, "parse_resume", fake_parse_resume_factory(text=""))
@@ -1124,11 +1096,8 @@ def test_reply_to_missing_items_gets_no_acknowledgment(
     run_pipeline()
 
     all_templates = _outbound_templates(db)
-    # Count new acknowledgments and duplicate_updates added by the reply
-    new_acks = sum(1 for t in all_templates if t == "acknowledgment") - sum(1 for t in templates_before if t == "acknowledgment")
     new_dups = sum(1 for t in all_templates if t == "duplicate_update")
 
-    assert new_acks == 0, f"reply to missing_items should not trigger acknowledgment, got {new_acks} new"
     assert new_dups == 0, f"reply to missing_items should not trigger duplicate_update, got {new_dups}"
 
 

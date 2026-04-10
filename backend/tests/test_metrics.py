@@ -70,7 +70,7 @@ def test_empty_db(client, settings_row):
     d = r.json()
 
     tech = d["technical"]
-    assert tech["ack_latency_seconds"] is None
+    assert tech["first_response_latency_seconds"] is None
     assert tech["evaluation_latency_seconds"] is None
     assert tech["decision_email_latency_seconds"] is None
     assert tech["processing_error_rate"] is None
@@ -197,19 +197,19 @@ def test_avg_score(client, db, settings_row):
     assert r.json()["business"]["avg_score"] == 60.0
 
 
-# ── ack latency ──────────────────────────────────────────────────────
+# ── first response latency ──────────────────────────────────────────
 
 
-def test_ack_latency(client, db, settings_row):
+def test_first_response_latency(client, db, settings_row):
     t0 = _utc(-10)
     t1 = t0 + timedelta(seconds=20)
     c = _make_candidate(db, "a@x.com")
     _make_log(db, c.id, "ingest", "started", created_at=t0)
-    _make_log(db, c.id, "send_email", "sent acknowledgment", created_at=t1)
+    _make_log(db, c.id, "send_email", "sent missing_items", created_at=t1)
     db.commit()
 
     r = client.get("/api/metrics")
-    assert r.json()["technical"]["ack_latency_seconds"] == 20.0
+    assert r.json()["technical"]["first_response_latency_seconds"] == 20.0
 
 
 # ── evaluation latency ───────────────────────────────────────────────

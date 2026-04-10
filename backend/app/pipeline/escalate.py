@@ -1,7 +1,7 @@
 """Move a candidate to processing_error after retries are exhausted.
 
 Safety net: also emails the candidate a generic "we hit a snag, please resend"
-notice so they never disappear silently after the initial acknowledgment.
+notice so they never disappear silently after the initial response email.
 The email is enqueued (not sent inline) so this function stays cheap and
 never raises from inside the worker loop.
 """
@@ -29,7 +29,7 @@ def escalate_processing_error(db: Session, job: Job) -> None:
         meta={"job_id": job.id, "attempts": job.attempts},
     ))
     # Safety-net notice to the candidate so they aren't left hanging after
-    # the initial acknowledgment.
+    # the initial response email.
     if cand.email:
         queue.enqueue(
             db,

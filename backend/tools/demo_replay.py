@@ -93,11 +93,6 @@ _CATEGORY_EXPLANATIONS = {
 # ---------------------------------------------------------------------------
 
 _TEMPLATE_LOGIC: dict[str, str] = {
-    "acknowledgment": (
-        "Every application-shaped email gets an acknowledgment.\n"
-        "  Rule: classify returned 'application' AND candidate row was created.\n"
-        "  This fires before any completeness checks — the candidate knows we received it."
-    ),
     "pass_decision": (
         "The candidate's weighted score met or exceeded the auto-pass threshold.\n"
         "  Rule: overall_score >= auto_pass_floor (default 50).\n"

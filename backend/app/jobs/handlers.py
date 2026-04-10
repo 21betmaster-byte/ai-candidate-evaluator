@@ -6,7 +6,7 @@ Each handler accepts (db: Session, job: Job) and either:
   - enqueues the next job(s) in the chain
 
 Pipeline chain for a complete application:
-  ingest_email → (acknowledgment + parse_resume) → fetch_github → fetch_portfolio
+  ingest_email → parse_resume → fetch_github → fetch_portfolio
   → discover_secondary → structure_profile → score → decide → send_decision_email
 
 For incomplete / non-application emails, ingest_email enqueues a single
@@ -132,8 +132,6 @@ def _enqueue_send_template(db: Session, candidate_id: int | None, template_key: 
 
 def _render_template(template_key: str, payload: dict, company: str) -> tpl.RenderedEmail:
     name = payload.get("name")
-    if template_key == "acknowledgment":
-        return tpl.acknowledgment(name, company)
     if template_key == "pass_decision":
         return tpl.pass_decision(name, payload.get("next_steps", ""), company)
     if template_key == "fail_decision":
@@ -413,12 +411,6 @@ def handle_ingest_email(db: Session, job: Job) -> None:
 
     db.add(ev)
     db.flush()
-
-    # Send acknowledgment only for first-time applications.
-    # Re-applications / replies are processed silently — the pipeline will send
-    # the appropriate next email (decision, missing_items, etc.).
-    if not is_duplicate:
-        _enqueue_send_template(db, cand.id, "acknowledgment", {"name": email.sender_name, "to": email.sender_email})
 
     # Decide routing based on which URLs are present. The missing_items email
     # is deferred until AFTER fetch_github / fetch_portfolio run so the system
