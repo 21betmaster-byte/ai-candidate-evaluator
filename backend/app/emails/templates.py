@@ -152,7 +152,8 @@ def empty_email(name: str | None, company: str) -> RenderedEmail:
 
 def portfolio_is_linkedin(name: str | None, company: str) -> RenderedEmail:
     body = (
-        "Your application just landed and we're excited to take a look! We see you shared your LinkedIn profile — and we appreciate the transparency! But we're actually "
+        "Your application just landed and we're excited to take a look!\n\n"
+        "We see you shared your LinkedIn profile — and we appreciate the transparency! But we're actually "
         "looking for a portfolio or project showcase: a personal site, a GitHub Pages project, a Behance, "
         "or anything that shows off what you've built.\n\n"
         "LinkedIn is great for networking, but we want to see your work in action. Reply with a link to "
