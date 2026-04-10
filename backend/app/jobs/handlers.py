@@ -851,8 +851,13 @@ def handle_structure_profile(db: Session, job: Job) -> None:
     db.add(ev)
 
     if profile.get("_parse_error"):
-        log_event(db, cand.id, "structure_profile", "parse error — proceeding with salvaged profile", level="warn", meta={
+        llm_meta = profile.get("_llm_meta") or {}
+        output_tokens = llm_meta.get("llm_output_tokens", 0)
+        reason = "output likely truncated at max_tokens" if output_tokens >= 4900 else "LLM returned malformed JSON"
+        log_event(db, cand.id, "structure_profile", f"parse error — proceeding with salvaged profile ({reason})", level="warn", meta={
             "raw_snippet": (profile.get("_raw") or "")[:300],
+            "reason": reason,
+            "llm_output_tokens": output_tokens,
         })
 
     queue.enqueue(db, type="score", candidate_id=cand.id, payload={"evaluation_id": ev.id})
