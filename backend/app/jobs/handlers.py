@@ -238,16 +238,23 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         gmail.mark_processed(message_id)
         return
 
+    # Threading info for non-application replies
+    _thread_payload = {
+        "thread_id": email.thread_id,
+        "in_reply_to": email.rfc822_message_id,
+        "subject": email.subject,
+    }
+
     if category == "spam_sales":
         cand = None
         _log_inbound(db, email, cand, "spam_sales")
-        _enqueue_send_template(db, None, "spam_sales", {"name": email.sender_name, "to": email.sender_email})
+        _enqueue_send_template(db, None, "spam_sales", {"name": email.sender_name, "to": email.sender_email, **_thread_payload})
         gmail.mark_processed(message_id)
         return
 
     if category == "gibberish":
         _log_inbound(db, email, None, "gibberish")
-        _enqueue_send_template(db, None, "gibberish", {"name": email.sender_name, "to": email.sender_email})
+        _enqueue_send_template(db, None, "gibberish", {"name": email.sender_name, "to": email.sender_email, **_thread_payload})
         gmail.mark_processed(message_id)
         return
 
@@ -275,14 +282,14 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     if category == "question":
         _log_inbound(db, email, None, "question")
         _enqueue_send_template(db, None, "question_response", {
-            "name": email.sender_name, "to": email.sender_email,
+            "name": email.sender_name, "to": email.sender_email, **_thread_payload,
         })
         gmail.mark_processed(message_id)
         return
 
     if category == "other":
         _log_inbound(db, email, None, "other")
-        _enqueue_send_template(db, None, "unclassifiable", {"name": email.sender_name, "to": email.sender_email})
+        _enqueue_send_template(db, None, "unclassifiable", {"name": email.sender_name, "to": email.sender_email, **_thread_payload})
         gmail.mark_processed(message_id)
         return
 
@@ -937,17 +944,17 @@ def handle_send_template_email(db: Session, job: Job) -> None:
     payload = job.payload or {}
     template_key = payload["template"]
     to = payload.get("to")
-    thread_id: str | None = None
-    in_reply_to: str | None = None
-    subject: str | None = None
+    thread_id: str | None = payload.get("thread_id")
+    in_reply_to: str | None = payload.get("in_reply_to")
+    subject: str | None = payload.get("subject")
     if job.candidate_id:
         cand = db.get(Candidate, job.candidate_id)
         if cand:
             if not to:
                 to = cand.email
-            thread_id = cand.gmail_thread_id
-            in_reply_to = cand.rfc822_message_id
-            subject = cand.last_inbound_subject
+            thread_id = thread_id or cand.gmail_thread_id
+            in_reply_to = in_reply_to or cand.rfc822_message_id
+            subject = subject or cand.last_inbound_subject
     if not to:
         raise ValueError(f"send_template_email missing 'to' (template={template_key})")
     settings = _settings_row(db)
