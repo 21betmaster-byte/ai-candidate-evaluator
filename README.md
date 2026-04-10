@@ -70,7 +70,7 @@ Every candidate gets a response — no one gets ghosted.
 
 ## Architecture
 
-A single Python backend (FastAPI) handles both the API and an embedded async worker — no separate task runner or message broker needed. PostgreSQL is the only infrastructure dependency: it stores candidates, evaluations, and settings, and doubles as the job queue using row-level locking for safe concurrency.
+A single Python backend (FastAPI) handles both the API and an embedded async worker — no separate task runner or message broker needed. PostgreSQL is the only infrastructure dependency: it stores candidates, evaluations, and settings, and doubles as the job queue.
 
 The AI work is split into two stages to optimize cost and quality. A smaller, faster model (Claude Sonnet) handles classification and data extraction — cheap work that runs on every email. The more capable model (Claude Opus) only runs once per candidate, scoring a clean structured profile against the rubric. System prompts use caching to cut repeat costs.
 
@@ -78,18 +78,17 @@ The dashboard is a Next.js app that shares the same database. Authentication use
 
 ## Tech Stack & Why
 
-- **Python + FastAPI** — Fast to build, strong data validation with Pydantic, and well-suited for both API serving and background processing in one process.
+- **Python + FastAPI** — Fast to build, great documentation, and well-suited for both API serving and background processing in one process.
 - **PostgreSQL** — One managed database handles everything: application data, job queue, and settings. No Redis, no separate queue service. Retries survive restarts because jobs live in the database, not in memory.
 - **Claude Sonnet + Opus** — Two-model pipeline keeps costs low. Sonnet normalizes messy inputs cheaply; Opus only scores clean, structured data against the rubric. Prompt caching makes repeated evaluations cheaper after the first couple of candidates.
 - **PyMuPDF** — The fastest reliable way to extract text from resume PDFs in Python.
-- **Playwright** — Some portfolios are single-page apps that don't render without JavaScript. Playwright handles those when a simple HTTP fetch fails.
 - **Next.js 15 + Auth.js** — Server components fetch data and render in one round-trip. Auth.js gives us email/password login now with a clear upgrade path to SSO later.
 - **Tailwind CSS** — Utility-first styling that keeps the dashboard responsive without custom CSS breakpoints.
 - **Vitest + Playwright** — Fast unit tests plus cross-browser end-to-end tests with visual regression to catch UI regressions.
 
 ## Trade-offs
 
-- **Resume PDFs only.** Scanned/image-based PDFs and other file types aren't supported. Non-PDF attachments get an email asking the candidate to resend. This keeps the parsing pipeline simple and reliable.
+- **Resume PDFs and docx only.** Scanned/image-based PDFs and other file types aren't supported. Non-PDF attachments get an email asking the candidate to resend. This keeps the parsing pipeline simple and reliable.
 - **Email/password auth, not SSO.** This is an internal tool with a small user base. The auth layer is designed to be swapped for a real identity provider when needed — a minimal change, not a rewrite.
 - **Single worker process.** The job queue supports parallel workers, but one is enough for this volume. Scaling up means adding processes, not changing architecture.
 - **No retroactive re-scoring.** When you update the rubric, only new candidates are evaluated against it. Old evaluations keep their original scores. This is intentional — changing the rules after the fact would undermine the audit trail.
@@ -104,43 +103,3 @@ The dashboard is a Next.js app that shares the same database. Authentication use
 - **Evaluation quality metrics** — A labeled test set of "known good" and "known bad" candidates to continuously measure whether the classifier and scorer are drifting.
 - **Live processing view** — Stream pipeline events to the dashboard so you can watch a candidate being evaluated in real time.
 - **SSO** — Replace email/password with Google Workspace or SAML once the user base grows beyond a handful of people.
-
-## Getting Started
-
-**Backend:**
-```bash
-cd backend
-cp .env.example .env              # fill in Anthropic, Gmail OAuth, GitHub token
-python -m venv .venv && source .venv/bin/activate
-pip install -e .[dev]
-docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
-alembic upgrade head
-uvicorn app.main:app --reload     # starts API + embedded worker
-```
-
-**Dashboard:**
-```bash
-cd web
-cp .env.example .env.local        # AUTH_SECRET must match backend NEXTAUTH_JWT_SECRET
-npm install && npm run dev        # http://localhost:3100
-```
-
-Sign in: `admin@curator.local` / `curator`
-
-## Tests
-
-| Tier | Runner | Tests | Wall time |
-|------|--------|-------|-----------|
-| Backend (hermetic) | pytest | 56 | ~0.1s |
-| Backend (live Gmail) | pytest -m live | 4 | ~30s |
-| Frontend unit | Vitest | 47 | ~1.4s |
-| E2E (3 browsers + visual) | Playwright | 99 | ~96s |
-
-Full instructions: **[TESTING.md](TESTING.md)**
-
-## Further Reading
-
-- [Backend deep dive](backend/BACKEND_STATUS.md)
-- [Frontend deep dive](web/FRONTEND.md)
-- [Product requirements](PRD_AI_Candidate_Evaluator_V1.md)
-- [Original brief](plum_builders_residency_brief.md)
