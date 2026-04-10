@@ -15,7 +15,98 @@ from __future__ import annotations
 import json
 from urllib.parse import urlparse
 
+import re
+
 from app.llm import call_sonnet, parse_json_block, LLMResult
+
+
+def _try_salvage_json(raw: str) -> dict:
+    """Best-effort recovery of truncated JSON from a token-limited LLM response.
+
+    Strategy: walk the string tracking brace/bracket/string state, then close
+    any structures that were still open when the output was cut off. Retries
+    by trimming the tail progressively if the first attempt fails.
+    """
+    text = raw.strip()
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    text = text.strip()
+
+    # Try as-is first
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # Walk the string tracking nesting state
+    stack: list[str] = []  # tracks '{' and '['
+    in_string = False
+    escaped = False
+    last_good = 0  # last position after a complete key-value or array element
+
+    for i, ch in enumerate(text):
+        if escaped:
+            escaped = False
+            continue
+        if ch == '\\' and in_string:
+            escaped = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch in ('{', '['):
+            stack.append(ch)
+        elif ch == '}' and stack and stack[-1] == '{':
+            stack.pop()
+            if not stack:
+                last_good = i + 1
+        elif ch == ']' and stack and stack[-1] == '[':
+            stack.pop()
+        elif ch == ',' and len(stack) == 1:
+            last_good = i + 1
+
+    # Try closing from the end of the string
+    for trim_to in [len(text), last_good]:
+        candidate = text[:trim_to].rstrip().rstrip(',')
+        # Close unmatched quote if needed
+        if candidate.count('"') % 2 == 1:
+            candidate = candidate[:candidate.rfind('"')]
+            candidate = candidate.rstrip().rstrip(',')
+        # Recount stack for this candidate
+        s: list[str] = []
+        in_s = False
+        esc = False
+        for ch in candidate:
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_s:
+                esc = True
+                continue
+            if ch == '"':
+                in_s = not in_s
+                continue
+            if in_s:
+                continue
+            if ch in ('{', '['):
+                s.append(ch)
+            elif ch == '}' and s and s[-1] == '{':
+                s.pop()
+            elif ch == ']' and s and s[-1] == '[':
+                s.pop()
+        # Close remaining open structures in reverse order
+        closers = {'[': ']', '{': '}'}
+        candidate += ''.join(closers[c] for c in reversed(s))
+        try:
+            result = json.loads(candidate)
+            if isinstance(result, dict):
+                return result
+        except Exception:
+            continue
+
+    return {}
 
 STRUCTURE_SYSTEM = """You are a hiring data extractor. You will be given three inputs:
 1. Raw text from a candidate's resume
@@ -209,11 +300,16 @@ def structure_profile(
         "PORTFOLIO DATA:\n"
         f"{json.dumps(sanitized_portfolio or {}, indent=2)[:20000]}\n"
     )
-    llm_result = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=4096, temperature=0)
+    llm_result = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=5000, temperature=0)
     try:
         profile = parse_json_block(llm_result.text)
     except Exception:
-        return {"_parse_error": True, "_raw": llm_result.text[:2000], "_llm_meta": llm_result.meta_dict()}
+        # Truncated JSON — attempt to salvage by closing the JSON and re-parsing.
+        raw = llm_result.text.strip()
+        profile = _try_salvage_json(raw)
+        profile["_llm_meta"] = llm_result.meta_dict()
+        profile["_parse_error"] = True
+        profile["_raw"] = raw[:2000]
 
     # Single source of truth: the deterministic flags are injected here, not
     # echoed by Sonnet. Overrides anything the model might have hallucinated.
