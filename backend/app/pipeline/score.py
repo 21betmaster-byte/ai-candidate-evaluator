@@ -34,8 +34,8 @@ For each parameter in the rubric:
 - If no evidence is available for a parameter, score it ≤20 and state "No evidence found."
 
 ## Important rules
-- Score ONLY based on observable evidence in the provided materials.
-- Do not infer or assume anything not explicitly present.
+- Score primarily based on observable evidence in the provided materials.
+- You may make minimal, common-sense inferences where the context strongly implies it (e.g., a candidate with 4 years at a known company likely shipped production code), but do not fabricate or speculate beyond what the materials reasonably support.
 - Do not search the web for any information about institutions, companies, or the candidate. Use ONLY the Tier 1 reference list below for pedigree evaluation.
 - If a parameter cannot be evaluated due to missing materials (e.g., no GitHub link provided), score it ≤20.
 
@@ -44,10 +44,10 @@ After scoring all parameters, the weighted average across all dimensions (using 
 
 ## Scoring anchors
 - 0–20: No evidence for this dimension.
-- 21–40: Weak or indirect signals only (e.g., coursework, tutorials, vague claims).
-- 41–60: Some real evidence but limited scope, depth, or recency.
-- 61–80: Solid evidence of applied, production-level work in this area.
-- 81–100: Exceptional — clear, specific, repeated evidence of high-impact work. Reserve this range for standout candidates.
+- 21–40: Weak or indirect signals only (e.g., coursework, tutorials, vague claims without supporting detail).
+- 41–60: Credible evidence of relevant work but lacking specifics, metrics, or depth (e.g., lists real projects and employers but without concrete outcomes).
+- 61–80: Solid, specific evidence of real-world applied work — named projects, clear responsibilities, relevant technologies, or measurable results.
+- 81–100: Exceptional — repeated, detailed evidence of high-impact, production-level work with clear outcomes. Reserve for standout candidates.
 
 ## Evaluation rules
 1. Score each dimension INDEPENDENTLY. A strong signal in one area must not inflate others.
