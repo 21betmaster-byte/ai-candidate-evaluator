@@ -47,6 +47,12 @@ export interface ProcessingLogEntry {
   created_at: string;
 }
 
+export interface LogEntryWithCandidate extends ProcessingLogEntry {
+  candidate_id: number | null;
+  candidate_name: string | null;
+  candidate_email: string | null;
+}
+
 export interface EmailHistoryEntry {
   id: number;
   direction: "in" | "out";
@@ -88,7 +94,8 @@ export interface SettingsModel {
     manual_review_ceiling: number;
     auto_pass_floor: number;
   };
-  pass_next_steps_text: string;
+  pass_next_steps_text?: string;
   reminder_hours: number;
+  incomplete_expiry_days: number;
   company_name: string;
 }

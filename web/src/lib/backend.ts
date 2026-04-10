@@ -8,6 +8,7 @@
 import type {
   CandidateDetail,
   CandidateRow,
+  LogEntryWithCandidate,
   SettingsModel,
 } from "./types";
 
@@ -96,6 +97,20 @@ export const backend = {
       { method: "PUT", body: JSON.stringify(body) },
       opts,
     );
+  },
+
+  getLogs(
+    params: { step?: string; level?: string; candidate_id?: number; limit?: number; offset?: number } = {},
+    opts?: FetchOpts,
+  ) {
+    const qs = new URLSearchParams();
+    if (params.step) qs.set("step", params.step);
+    if (params.level) qs.set("level", params.level);
+    if (params.candidate_id) qs.set("candidate_id", params.candidate_id.toString());
+    if (params.limit) qs.set("limit", params.limit.toString());
+    if (params.offset) qs.set("offset", params.offset.toString());
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<LogEntryWithCandidate[]>(`/logs${suffix}`, {}, opts);
   },
 
   pollNow(opts?: FetchOpts) {

@@ -44,8 +44,9 @@ export default function SettingsForm({ initial }: { initial: SettingsModel }) {
   const [manualReview, setManualReview] = useState(initial.tier_thresholds.manual_review_ceiling);
   const [autoPass, setAutoPass] = useState(initial.tier_thresholds.auto_pass_floor);
   const [companyName, setCompanyName] = useState(initial.company_name);
-  const [passText, setPassText] = useState(initial.pass_next_steps_text);
+
   const [reminderHours, setReminderHours] = useState(initial.reminder_hours);
+  const [incompleteExpiryDays, setIncompleteExpiryDays] = useState(initial.incomplete_expiry_days);
 
   const weightTotal = useMemo(
     () => rubric.reduce((s, d) => s + (Number.isFinite(d.weight) ? d.weight : 0), 0),
@@ -110,8 +111,9 @@ export default function SettingsForm({ initial }: { initial: SettingsModel }) {
         manual_review_ceiling: manualReview,
         auto_pass_floor: autoPass,
       },
-      pass_next_steps_text: passText,
+
       reminder_hours: reminderHours,
+      incomplete_expiry_days: incompleteExpiryDays,
       company_name: companyName.trim(),
     };
     startTransition(async () => {
@@ -271,22 +273,30 @@ export default function SettingsForm({ initial }: { initial: SettingsModel }) {
                 onChange={(e) => setReminderHours(Number(e.target.value))}
               />
             </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[10px] font-label font-bold text-on-surface-variant uppercase tracking-widest">
+                  Incomplete Expiry
+                </label>
+                <span className="text-xs font-headline font-bold text-primary">
+                  {incompleteExpiryDays} {incompleteExpiryDays === 1 ? "day" : "days"}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={incompleteExpiryDays}
+                onChange={(e) => setIncompleteExpiryDays(Number(e.target.value))}
+              />
+              <div className="flex justify-between text-[10px] font-medium opacity-50 mt-1">
+                <span>1 day</span>
+                <span>30 days</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="bg-surface-container-lowest p-8 rounded-xl shadow-editorial-soft">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="material-symbols-outlined text-primary">mail</span>
-            <h2 className="font-headline text-xl font-bold">Pass Email Text</h2>
-          </div>
-          <textarea
-            value={passText}
-            onChange={(e) => setPassText(e.target.value)}
-            rows={5}
-            className="w-full bg-surface border border-outline-variant/40 rounded-lg p-3 text-sm focus:border-primary focus:ring-0"
-            placeholder="What to tell passing candidates about next steps…"
-          />
-        </section>
       </div>
 
       {/* Full-width footer actions */}
@@ -362,10 +372,18 @@ function DimensionRow({
           />
         </div>
         <div className="flex flex-col items-end gap-2 min-w-[100px]">
-          <span className="font-headline text-3xl font-black text-primary">
-            {dim.weight}
+          <div className="flex items-baseline gap-0.5">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={dim.weight}
+              onChange={(e) => onChange({ weight: Number(e.target.value) })}
+              onBlur={(e) => onChange({ weight: Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))) })}
+              className="font-headline text-3xl font-black text-primary bg-transparent w-16 text-right appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] focus:outline-none focus:underline focus:decoration-primary/30"
+            />
             <span className="text-xs opacity-50">%</span>
-          </span>
+          </div>
           <input
             type="range"
             min={0}

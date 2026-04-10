@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 
-from app.llm import call_opus, parse_json_block
+from app.llm import call_opus, parse_json_block, LLMResult
 
 SCORE_SYSTEM = """You are a senior hiring evaluator at an early-stage builder studio.
 
@@ -123,19 +123,32 @@ def score_candidate(profile: dict, rubric: list[dict], pass_threshold: int = 70)
         f"{json.dumps(profile, indent=2)[:14000]}\n\n"
         "Score every dimension above. Return JSON only."
     )
-    raw = call_opus(system, user, max_tokens=2500)
-    parsed = parse_json_block(raw)
+    llm_result = call_opus(system, user, max_tokens=2500)
+    try:
+        parsed = parse_json_block(llm_result.text)
+    except Exception:
+        return {
+            "scores": {},
+            "overall_score": 0.0,
+            "decision_reason": "",
+            "_parse_error": True,
+            "_raw": llm_result.text[:2000],
+            "_llm_meta": llm_result.meta_dict(),
+        }
 
     scores_in = parsed.get("scores", {}) or {}
     scores_out: dict[str, dict] = {}
+    clamped_dimensions: list[str] = []
     for dim in rubric:
         key = dim["key"]
         entry = scores_in.get(key) or {}
         try:
-            s = int(entry.get("score", 0))
+            raw_score = int(entry.get("score", 0))
         except Exception:
-            s = 0
-        s = max(0, min(100, s))
+            raw_score = 0
+        s = max(0, min(100, raw_score))
+        if s != raw_score:
+            clamped_dimensions.append(key)
         scores_out[key] = {
             "score": s,
             "reasoning": str(entry.get("reasoning", ""))[:1000],
@@ -146,6 +159,8 @@ def score_candidate(profile: dict, rubric: list[dict], pass_threshold: int = 70)
         "scores": scores_out,
         "overall_score": overall,
         "decision_reason": str(parsed.get("decision_reason", ""))[:500],
+        "_llm_meta": llm_result.meta_dict(),
+        "_clamped_dimensions": clamped_dimensions,
     }
 
 

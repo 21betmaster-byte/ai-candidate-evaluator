@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from urllib.parse import urlparse
 
-from app.llm import call_sonnet, parse_json_block
+from app.llm import call_sonnet, parse_json_block, LLMResult
 
 STRUCTURE_SYSTEM = """You are a hiring data extractor. You will be given three inputs:
 1. Raw text from a candidate's resume
@@ -209,22 +209,44 @@ def structure_profile(
         "PORTFOLIO DATA:\n"
         f"{json.dumps(sanitized_portfolio or {}, indent=2)[:20000]}\n"
     )
-    raw = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=2500, temperature=0)
+    llm_result = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=2500, temperature=0)
     try:
-        profile = parse_json_block(raw)
+        profile = parse_json_block(llm_result.text)
     except Exception:
-        return {"_parse_error": True, "_raw": raw[:2000]}
+        return {"_parse_error": True, "_raw": llm_result.text[:2000], "_llm_meta": llm_result.meta_dict()}
 
     # Single source of truth: the deterministic flags are injected here, not
     # echoed by Sonnet. Overrides anything the model might have hallucinated.
+    portfolio_flags_overridden = False
     if portfolio_data:
         flags = _compute_portfolio_flags(portfolio_data)
         portfolio_signal = profile.get("portfolio_signal")
         if not isinstance(portfolio_signal, dict):
             portfolio_signal = {}
+        portfolio_flags_overridden = (
+            portfolio_signal.get("has_live_demos") != flags["has_live_demos"]
+            or portfolio_signal.get("live_demo_count") != flags["live_demo_count"]
+        )
         portfolio_signal["has_live_demos"] = flags["has_live_demos"]
         portfolio_signal["live_demo_count"] = flags["live_demo_count"]
         portfolio_signal["has_downloadable_resume"] = flags["has_downloadable_resume"]
         profile["portfolio_signal"] = portfolio_signal
+
+    # Extraction stats for logging — which top-level fields were populated
+    work_exp = profile.get("work_experience") or []
+    shipped = profile.get("shipped_products") or []
+    education = profile.get("education") or []
+    profile["_llm_meta"] = llm_result.meta_dict()
+    profile["_extraction_stats"] = {
+        "has_name": bool(profile.get("name")),
+        "has_headline": bool(profile.get("headline")),
+        "years_of_experience": profile.get("years_of_experience"),
+        "work_experience_count": len(work_exp),
+        "shipped_products_count": len(shipped),
+        "education_count": len(education),
+        "has_github_signal": profile.get("github_signal") is not None,
+        "has_portfolio_signal": profile.get("portfolio_signal") is not None,
+        "portfolio_flags_overridden": portfolio_flags_overridden,
+    }
 
     return profile

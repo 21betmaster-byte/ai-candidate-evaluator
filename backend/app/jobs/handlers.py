@@ -158,6 +158,8 @@ def _render_template(template_key: str, payload: dict, company: str) -> tpl.Rend
         return tpl.portfolio_unreachable(name, company)
     if template_key == "reminder":
         return tpl.reminder(name, payload.get("missing", []), company)
+    if template_key == "incomplete_rejection":
+        return tpl.incomplete_rejection(name, company)
     if template_key == "rapid_emails":
         return tpl.rapid_emails(name, company)
     if template_key == "unclassifiable":
@@ -206,6 +208,22 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         cls = classify_email(email)
         ctx["category"] = cls["category"]
     category = cls["category"]
+
+    # Exhaustive classify logging
+    classify_meta = {
+        "category": category,
+        "reason": cls.get("reason", ""),
+        "confidence": cls.get("confidence", 0),
+    }
+    if cls.get("heuristic_shortcut"):
+        classify_meta["heuristic_shortcut"] = cls["heuristic_shortcut"]
+    if cls.get("_llm_meta"):
+        classify_meta.update(cls["_llm_meta"])
+    if cls.get("_parse_error"):
+        classify_meta["llm_parse_error"] = True
+    if cls.get("review_reason"):
+        classify_meta["review_reason"] = cls["review_reason"]
+    log_event(db, None, "classify.result", f"classified as {category}", meta=classify_meta)
 
     # Auto-reply: log + ignore. Never email back.
     if category == "auto_reply":
@@ -343,6 +361,17 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         ctx["resume_filename"] = parsed.selected_filename
         ctx["url_count"] = len(parsed.urls)
 
+    # Exhaustive parse_resume logging
+    log_event(db, cand.id, "parse_resume.detail", f"parsed {parsed.file_format or 'none'}", meta={
+        "file_format": parsed.file_format,
+        "text_length": parsed.text_length,
+        "url_count_from_text": parsed.url_count_from_text,
+        "url_count_from_annotations": parsed.url_count_from_annotations,
+        "total_urls": len(parsed.urls),
+        "parse_errors": parsed.parse_errors,
+        "selected_filename": parsed.selected_filename,
+    })
+
     # Wrong-format attachment: had attachments but no supported resume (PDF or DOCX).
     if parsed.any_attachment and not parsed.resume_present:
         _enqueue_send_template(db, cand.id, "non_pdf_attachment", {"name": email.sender_name, "to": email.sender_email})
@@ -362,6 +391,15 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     github_url, portfolio_url, linkedin_url = classify_urls(all_urls)
     ev.github_url = github_url
     ev.portfolio_url = portfolio_url
+
+    log_event(db, cand.id, "url_extraction", "URLs extracted and classified", meta={
+        "body_url_count": len(body_urls),
+        "resume_url_count": len(parsed.urls),
+        "total_unique": len(all_urls),
+        "github_url": github_url,
+        "portfolio_url": portfolio_url,
+        "linkedin_url": linkedin_url,
+    })
 
     # Merge from prior evaluation: any field the new email did NOT supply is
     # carried forward from what the candidate sent previously. The new email
@@ -398,45 +436,51 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     if is_duplicate:
         _enqueue_send_template(db, cand.id, "duplicate_update", {"name": email.sender_name, "to": email.sender_email})
 
-    # Decide what's missing AFTER secondary discovery (which happens later in pipeline if we have *something* to chase).
-    # Strategy: if we have at least the portfolio_url, run discover_secondary first; if we have nothing to chase,
-    # send the missing-items email immediately.
+    # Decide routing based on which URLs are present. The missing_items email
+    # is deferred until AFTER fetch_github / fetch_portfolio run so the system
+    # knows what's truly missing. Only send immediately when there are zero
+    # URLs to chase.
     has_resume = parsed.resume_present
     has_github = bool(github_url)
     has_portfolio = bool(portfolio_url)
 
-    # If portfolio is actually LinkedIn, tell them.
+    # If portfolio is actually LinkedIn, tell them (clear dead-end, nothing to fetch).
     if linkedin_url and not portfolio_url:
-        _enqueue_send_template(db, cand.id, "portfolio_is_linkedin", {"name": email.sender_name, "to": email.sender_email})
-        cand.status = "incomplete"
+        log_event(db, cand.id, "routing_decision", "linkedin_only — no portfolio or github", meta={
+            "route": "linkedin_only", "has_resume": has_resume, "linkedin_url": linkedin_url,
+        })
         missing = []
         if not has_resume:
             missing.append("a resume PDF")
         if not has_github:
             missing.append("a link to your GitHub profile")
         missing.append("a real portfolio link (not LinkedIn)")
-        cand.missing_items = missing
-        db.add(cand)
+        _mark_incomplete_and_remind(db, cand, missing, template="portfolio_is_linkedin")
         gmail.mark_processed(message_id)
         return
 
-    # If portfolio exists, attempt secondary discovery before flagging missing.
+    # If portfolio exists but missing github/resume, try discover_secondary first.
     if has_portfolio and (not has_github or not has_resume):
+        log_event(db, cand.id, "routing_decision", "portfolio present but missing items — trying discover_secondary", meta={
+            "route": "discover_secondary", "has_resume": has_resume, "has_github": has_github, "has_portfolio": has_portfolio,
+        })
         queue.enqueue(db, type="discover_secondary", candidate_id=cand.id, payload={"evaluation_id": ev.id})
         cand.status = "pending"
         db.add(cand)
         gmail.mark_processed(message_id)
         return
 
-    # Nothing to chase — if anything's missing, send missing items
-    if not (has_resume and has_github and has_portfolio):
+    # No URLs at all — nothing to fetch, send missing_items immediately.
+    if not has_github and not has_portfolio:
+        log_event(db, cand.id, "routing_decision", "no github or portfolio URLs — marking incomplete", meta={
+            "route": "no_urls", "has_resume": has_resume,
+        })
         missing = _missing_list(has_resume, has_github, has_portfolio)
         cand.status = "incomplete"
         cand.missing_items = missing
         _enqueue_send_template(db, cand.id, "missing_items", {
             "name": email.sender_name, "to": email.sender_email, "missing": missing,
         })
-        # Schedule reminder
         queue.enqueue(
             db, type="send_reminder", candidate_id=cand.id,
             payload={"missing": missing, "to": email.sender_email, "name": email.sender_name},
@@ -446,7 +490,11 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         gmail.mark_processed(message_id)
         return
 
-    # Complete — kick off the full pipeline
+    # Has at least one URL — proceed to fetch pipeline. The fetch handlers
+    # will determine what's truly missing after attempting their fetches.
+    log_event(db, cand.id, "routing_decision", "application complete or has fetchable URLs — proceeding to fetch pipeline", meta={
+        "route": "fetch_pipeline", "has_resume": has_resume, "has_github": has_github, "has_portfolio": has_portfolio,
+    })
     queue.enqueue(db, type="fetch_github", candidate_id=cand.id, payload={"evaluation_id": ev.id})
     gmail.mark_processed(message_id)
 
@@ -488,7 +536,11 @@ def handle_discover_secondary(db: Session, job: Job) -> None:
     pipeline if complete, else send missing_items."""
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"discover_secondary: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"discover_secondary: candidate {ev.candidate_id} not found (job {job.id})")
     _log_step(db, cand.id, "discover_secondary", f"scanning portfolio {ev.portfolio_url}")
 
     has_resume = bool(ev.raw_resume_text)
@@ -526,6 +578,16 @@ def handle_discover_secondary(db: Session, job: Job) -> None:
         "text_snippet": pdata.text_snippet,
         "project_links": pdata.project_links,
     }
+    log_event(db, cand.id, "discover_secondary.portfolio_fetched", "portfolio fetched for secondary discovery", meta={
+        "final_url": pdata.final_url,
+        "title": pdata.title,
+        "project_link_count": len(pdata.project_links or []),
+        "text_snippet_length": len(pdata.text_snippet or ""),
+        "has_discovered_github": bool(pdata.discovered_github_url),
+        "has_discovered_resume": bool(pdata.discovered_resume_bytes),
+        "discovered_github_url": pdata.discovered_github_url,
+        "discovered_resume_url": pdata.discovered_resume_url,
+    })
 
     if not has_github and pdata.discovered_github_url:
         ev.github_url = pdata.discovered_github_url
@@ -539,12 +601,19 @@ def handle_discover_secondary(db: Session, job: Job) -> None:
             ev.resume_filename = pdata.discovered_resume_url or "portfolio_resume.pdf"
             has_resume = True
             _log_step(db, cand.id, "discover_secondary", f"resume discovered from portfolio: {pdata.discovered_resume_url}")
+            log_event(db, cand.id, "discover_secondary.resume_extracted", "resume extracted from portfolio PDF", meta={
+                "resume_url": pdata.discovered_resume_url,
+                "text_length": len(text),
+                "url_count": len(urls),
+                "resume_bytes": len(pdata.discovered_resume_bytes),
+            })
             # Maybe new URLs found in the discovered resume
             from app.pipeline.extract import classify_urls
             g2, _, _ = classify_urls(urls)
             if not has_github and g2:
                 ev.github_url = g2
                 has_github = True
+                log_event(db, cand.id, "discover_secondary.github_from_resume", f"github found in portfolio resume: {g2}")
 
     db.add(ev)
 
@@ -574,7 +643,18 @@ def handle_discover_secondary(db: Session, job: Job) -> None:
 def handle_fetch_github(db: Session, job: Job) -> None:
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"fetch_github: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"fetch_github: candidate {ev.candidate_id} not found (job {job.id})")
+
+    # No GitHub URL provided — skip fetch, proceed to portfolio.
+    if not ev.github_url:
+        _log_step(db, cand.id, "fetch_github", "skipped — no github_url provided")
+        queue.enqueue(db, type="fetch_portfolio", candidate_id=cand.id, payload={"evaluation_id": ev.id})
+        return
+
     with log_step(db, cand.id, "fetch_github", meta={"github_url": ev.github_url}) as ctx:
         try:
             data = fetch_github(ev.github_url)
@@ -603,6 +683,17 @@ def handle_fetch_github(db: Session, job: Job) -> None:
         "recent_commits_90d": data.recent_commits_90d,
         "top_repos": data.top_repos,
     }
+    log_event(db, cand.id, "fetch_github.detail", "GitHub data fetched", meta={
+        "username": data.username,
+        "public_repos": data.public_repos,
+        "followers": data.followers,
+        "language_count": len(data.languages or {}),
+        "top_languages": list((data.languages or {}).keys())[:5],
+        "top_repo_count": len(data.top_repos or []),
+        "top_repo_names": [r.get("name") for r in (data.top_repos or [])[:5]],
+        "recent_commits_90d": data.recent_commits_90d,
+        "recent_repos_pushed_6mo": data.recent_repos_pushed_6mo,
+    })
     db.add(ev)
     queue.enqueue(db, type="fetch_portfolio", candidate_id=cand.id, payload={"evaluation_id": ev.id})
 
@@ -613,46 +704,88 @@ def handle_fetch_github(db: Session, job: Job) -> None:
 def handle_fetch_portfolio(db: Session, job: Job) -> None:
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"fetch_portfolio: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"fetch_portfolio: candidate {ev.candidate_id} not found (job {job.id})")
+    portfolio_error: str | None = None  # local context for completeness check
 
-    # If discover_secondary already populated portfolio_data, skip refetch.
-    if ev.portfolio_data:
+    # No portfolio URL provided — skip fetch.
+    if not ev.portfolio_url:
+        _log_step(db, cand.id, "fetch_portfolio", "skipped — no portfolio_url provided")
+    elif ev.portfolio_data:
+        # discover_secondary already populated portfolio_data, skip refetch.
         _log_step(db, cand.id, "fetch_portfolio", "using cached portfolio_data")
+    else:
+        with log_step(db, cand.id, "fetch_portfolio", meta={"portfolio_url": ev.portfolio_url}) as ctx:
+            try:
+                pdata = fetch_portfolio(ev.portfolio_url)
+            except PortfolioCandidateError as e:
+                ctx["outcome"] = "candidate_error"
+                ctx["error"] = str(e)[:200]
+                log_event(db, cand.id, "fetch_portfolio", f"portfolio rejected: {e}", level="warn")
+                portfolio_error = str(e)[:200]
+            except PortfolioInfraError:
+                raise
+            else:
+                ctx["final_url"] = pdata.final_url
+                ctx["project_link_count"] = len(pdata.project_links or [])
+                log_event(db, cand.id, "fetch_portfolio.detail", "portfolio data fetched", meta={
+                    "final_url": pdata.final_url,
+                    "title": pdata.title,
+                    "project_link_count": len(pdata.project_links or []),
+                    "text_snippet_length": len(pdata.text_snippet or ""),
+                    "has_discovered_github": bool(pdata.discovered_github_url),
+                    "has_discovered_resume": bool(pdata.discovered_resume_bytes),
+                })
+                ev.portfolio_data = {
+                    "url": pdata.url,
+                    "final_url": pdata.final_url,
+                    "title": pdata.title,
+                    "text_snippet": pdata.text_snippet,
+                    "project_links": pdata.project_links,
+                }
+        db.add(ev)
+
+    # ---- Final completeness check after both fetches ----
+    has_resume = bool(ev.raw_resume_text)
+    has_github = bool(ev.github_data)
+    has_portfolio = bool(ev.portfolio_data)
+
+    log_event(db, cand.id, "completeness_check", "checking if all materials are present", meta={
+        "has_resume": has_resume, "has_github": has_github, "has_portfolio": has_portfolio,
+        "portfolio_error": portfolio_error,
+    })
+
+    if has_resume and has_github and has_portfolio:
+        log_event(db, cand.id, "routing_decision", "all materials present — proceeding to structure_profile", meta={"route": "complete"})
         queue.enqueue(db, type="structure_profile", candidate_id=cand.id, payload={"evaluation_id": ev.id})
         return
 
-    with log_step(db, cand.id, "fetch_portfolio", meta={"portfolio_url": ev.portfolio_url}) as ctx:
-        try:
-            pdata = fetch_portfolio(ev.portfolio_url)
-        except PortfolioCandidateError as e:
-            ctx["outcome"] = "candidate_error"
-            ctx["error"] = str(e)[:200]
-            log_event(db, cand.id, "fetch_portfolio", f"portfolio rejected: {e}", level="warn")
-            missing = list(cand.missing_items or [])
-            if "linkedin" in str(e).lower():
-                item = "a real portfolio or projects link (LinkedIn isn't enough)"
-                template = "portfolio_is_linkedin"
-            else:
-                item = "a working portfolio link (the one you sent didn't load)"
-                template = "portfolio_unreachable"
-            if item not in missing:
-                missing.append(item)
-            _mark_incomplete_and_remind(db, cand, missing, template=template)
-            return
-        except PortfolioInfraError:
-            raise
-        ctx["final_url"] = pdata.final_url
-        ctx["project_link_count"] = len(pdata.project_links or [])
+    # Something is missing — build the missing list and send missing_items.
+    missing: list[str] = []
+    if not has_resume:
+        missing.append("a resume PDF (attached to your email)")
+    if not has_github:
+        missing.append("a link to your GitHub profile")
+    if not has_portfolio:
+        if portfolio_error and "linkedin" in portfolio_error.lower():
+            missing.append("a real portfolio or projects link (LinkedIn isn't enough)")
+        elif portfolio_error:
+            missing.append("a working portfolio link (the one you sent didn't load)")
+        else:
+            missing.append("a link to your portfolio or projects")
 
-    ev.portfolio_data = {
-        "url": pdata.url,
-        "final_url": pdata.final_url,
-        "title": pdata.title,
-        "text_snippet": pdata.text_snippet,
-        "project_links": pdata.project_links,
-    }
-    db.add(ev)
-    queue.enqueue(db, type="structure_profile", candidate_id=cand.id, payload={"evaluation_id": ev.id})
+    # Pick the most specific template for the primary issue.
+    if portfolio_error and "linkedin" in portfolio_error.lower():
+        template = "portfolio_is_linkedin"
+    elif portfolio_error:
+        template = "portfolio_unreachable"
+    else:
+        template = "missing_items"
+
+    _mark_incomplete_and_remind(db, cand, missing, template=template)
 
 
 # ---------------------------- structure_profile ----------------------------
@@ -661,15 +794,46 @@ def handle_fetch_portfolio(db: Session, job: Job) -> None:
 def handle_structure_profile(db: Session, job: Job) -> None:
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"structure_profile: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"structure_profile: candidate {ev.candidate_id} not found (job {job.id})")
     with log_step(db, cand.id, "structure_profile") as ctx:
         profile = structure_profile(ev.raw_resume_text or "", ev.github_data, ev.portfolio_data)
         ctx["name"] = profile.get("name")
+
+    # Exhaustive structure_profile logging
+    struct_meta: dict = {}
+    if profile.get("_llm_meta"):
+        struct_meta.update(profile["_llm_meta"])
+    if profile.get("_extraction_stats"):
+        struct_meta["extraction_stats"] = profile["_extraction_stats"]
+    if profile.get("_parse_error"):
+        struct_meta["parse_error"] = True
+    struct_meta["name"] = profile.get("name")
+    struct_meta["headline"] = (profile.get("headline") or "")[:200]
+    struct_meta["work_experience_count"] = len(profile.get("work_experience") or [])
+    struct_meta["shipped_products_count"] = len(profile.get("shipped_products") or [])
+    struct_meta["education_count"] = len(profile.get("education") or [])
+    log_event(db, cand.id, "structure_profile.detail", "profile structured from raw materials", meta=struct_meta)
+
     ev.structured_profile = profile
     if not cand.name and profile.get("name"):
         cand.name = profile["name"]
         db.add(cand)
     db.add(ev)
+
+    if profile.get("_parse_error"):
+        log_event(db, cand.id, "structure_profile", "parse error — halting pipeline for manual review", level="error", meta={
+            "raw_snippet": (profile.get("_raw") or "")[:300],
+        })
+        cand.status = "manual_review"
+        cand.review_source = "structure_profile"
+        cand.review_reason = "LLM returned unparseable profile — needs manual review"
+        db.add(cand)
+        return
+
     queue.enqueue(db, type="score", candidate_id=cand.id, payload={"evaluation_id": ev.id})
 
 
@@ -679,7 +843,11 @@ def handle_structure_profile(db: Session, job: Job) -> None:
 def handle_score(db: Session, job: Job) -> None:
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"score: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"score: candidate {ev.candidate_id} not found (job {job.id})")
     settings = _settings_row(db)
     from app.models import DEFAULT_RUBRIC
     rubric = settings.rubric or DEFAULT_RUBRIC
@@ -688,6 +856,20 @@ def handle_score(db: Session, job: Job) -> None:
     with log_step(db, cand.id, "score", meta=meta) as ctx:
         result = score_candidate(ev.structured_profile or {}, rubric)
         ctx["overall_score"] = result["overall_score"]
+
+    # Exhaustive score logging — per-dimension scores + LLM token usage
+    score_meta: dict = {}
+    if result.get("_llm_meta"):
+        score_meta.update(result["_llm_meta"])
+    score_meta["overall_score"] = result["overall_score"]
+    score_meta["decision_reason"] = (result.get("decision_reason") or "")[:300]
+    score_meta["dimension_scores"] = {
+        k: v["score"] for k, v in result.get("scores", {}).items()
+    }
+    if result.get("_clamped_dimensions"):
+        score_meta["clamped_dimensions"] = result["_clamped_dimensions"]
+    log_event(db, cand.id, "score.detail", f"scored {result['overall_score']}", meta=score_meta)
+
     ev.scores = result["scores"]
     ev.overall_score = result["overall_score"]
     ev.decision_reason = result["decision_reason"]
@@ -701,13 +883,38 @@ def handle_score(db: Session, job: Job) -> None:
 def handle_decide(db: Session, job: Job) -> None:
     ev_id = (job.payload or {}).get("evaluation_id")
     ev = db.get(Evaluation, ev_id)
+    if not ev:
+        raise ValueError(f"decide: evaluation {ev_id} not found (job {job.id})")
     cand = db.get(Candidate, ev.candidate_id)
+    if not cand:
+        raise ValueError(f"decide: candidate {ev.candidate_id} not found (job {job.id})")
     settings = _settings_row(db)
     thresholds = settings.tier_thresholds or {"auto_fail_ceiling": 49, "manual_review_ceiling": 69, "auto_pass_floor": 70}
     tier = decide_tier(ev.overall_score or 0.0, thresholds)
     ev.tier = tier
     db.add(ev)
-    _log_step(db, cand.id, "decide", f"tier={tier} score={ev.overall_score}")
+
+    score = ev.overall_score or 0.0
+    # Distance from nearest threshold boundary
+    distances = {
+        "to_auto_pass": round(thresholds.get("auto_pass_floor", 70) - score, 2),
+        "to_auto_fail_ceiling": round(score - thresholds.get("auto_fail_ceiling", 49), 2),
+    }
+    template_sent = None
+    if tier == "auto_pass":
+        template_sent = "pass_decision"
+    elif tier == "auto_fail":
+        template_sent = "fail_decision"
+
+    _log_step(db, cand.id, "decide", f"tier={tier} score={score}")
+    log_event(db, cand.id, "decide.detail", f"tier={tier} score={score}", meta={
+        "tier": tier,
+        "score": score,
+        "thresholds": thresholds,
+        "threshold_distances": distances,
+        "template_sent": template_sent,
+        "status_transition": tier,
+    })
 
     if tier == "auto_pass":
         cand.status = "auto_pass"
@@ -752,7 +959,12 @@ def handle_send_template_email(db: Session, job: Job) -> None:
         body_snippet=rendered.body[:1000],
         template_used=rendered.template_key,
     ))
-    _log_step(db, job.candidate_id, "send_email", f"sent {template_key}")
+    log_event(db, job.candidate_id, "send_email", f"sent {template_key}", meta={
+        "template_key": template_key,
+        "to": to,
+        "gmail_message_id": msg_id,
+        "body_length": len(rendered.body),
+    })
 
 
 # ---------------------------- send_reminder ----------------------------
@@ -761,6 +973,7 @@ def handle_send_template_email(db: Session, job: Job) -> None:
 def handle_send_reminder(db: Session, job: Job) -> None:
     """Send reminder ONLY if candidate is still incomplete with the same missing items."""
     if not job.candidate_id:
+        log_event(db, None, "send_reminder", "BUG: job has no candidate_id", level="error", meta={"job_id": job.id})
         return
     cand = db.get(Candidate, job.candidate_id)
     if not cand or cand.status != "incomplete":
@@ -782,6 +995,49 @@ def handle_send_reminder(db: Session, job: Job) -> None:
     ))
     _log_step(db, cand.id, "send_reminder", "reminder sent")
 
+    # Schedule auto-reject after the configurable expiry period.
+    expiry_days = settings.incomplete_expiry_days or 7
+    queue.enqueue(
+        db,
+        type="auto_reject_incomplete",
+        candidate_id=cand.id,
+        payload={"name": cand.name, "to": cand.email},
+        delay_seconds=expiry_days * 86400,
+    )
+    log_event(db, cand.id, "send_reminder", "reminder sent, auto-reject scheduled", meta={
+        "expiry_days": expiry_days,
+        "missing_items": missing,
+        "gmail_message_id": msg_id,
+    })
+
+
+# ---------------------------- auto_reject_incomplete ----------------------------
+
+
+def handle_auto_reject_incomplete(db: Session, job: Job) -> None:
+    """Auto-reject candidate if still incomplete after expiry period."""
+    if not job.candidate_id:
+        log_event(db, None, "auto_reject_incomplete", "BUG: job has no candidate_id", level="error", meta={"job_id": job.id})
+        return
+    cand = db.get(Candidate, job.candidate_id)
+    if not cand or cand.status != "incomplete":
+        _log_step(
+            db, job.candidate_id, "auto_reject_incomplete",
+            "skipped — candidate no longer incomplete",
+        )
+        return
+    cand.status = "auto_fail"
+    db.add(cand)
+    payload = job.payload or {}
+    _enqueue_send_template(db, cand.id, "incomplete_rejection", {
+        "name": payload.get("name") or cand.name,
+        "to": payload.get("to") or cand.email,
+    })
+    log_event(db, cand.id, "auto_reject_incomplete", "candidate auto-rejected for incomplete application", meta={
+        "missing_items": cand.missing_items,
+        "status_transition": "auto_fail",
+    })
+
 
 # ---------------------------- registry ----------------------------
 
@@ -796,4 +1052,5 @@ HANDLERS: dict[str, Callable[[Session, Job], None]] = {
     "decide": handle_decide,
     "send_template_email": handle_send_template_email,
     "send_reminder": handle_send_reminder,
+    "auto_reject_incomplete": handle_auto_reject_incomplete,
 }

@@ -222,6 +222,21 @@ def reminder(name: str | None, missing: list[str], company: str) -> RenderedEmai
     )
 
 
+def incomplete_rejection(name: str | None, company: str) -> RenderedEmail:
+    body = (
+        "We reached out a while back about some missing pieces in your application, "
+        "but we haven't heard back yet.\n\n"
+        "We're going to close this one out for now, but we'd genuinely love to hear from you "
+        "again. If you're still interested, feel free to reapply with all the required materials "
+        "\u2014 a resume (PDF), a link to your GitHub profile, and a link to your portfolio.\n\n"
+        "The door's always open \u2014 we hope to see you again!"
+    )
+    return RenderedEmail(
+        body=_wrap(name, body, company),
+        template_key="incomplete_rejection",
+    )
+
+
 def rapid_emails(name: str | None, company: str) -> RenderedEmail:
     body = (
         "We noticed a few emails from you in quick succession (we've all been there). Don't worry — we've "

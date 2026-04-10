@@ -17,6 +17,8 @@ const INACTIVE = `text-on-surface/60 hover:text-primary ${BASE}`;
 export default function SideNav({ pollingMinutes }: { pollingMinutes: number }) {
   const path = usePathname() ?? "";
   const isSettings = path.startsWith("/settings");
+  const isLogs = path.startsWith("/logs");
+  const isCandidates = !isSettings && !isLogs;
 
   return (
     <aside className="bg-surface-container-low h-screen w-64 fixed left-0 top-0 overflow-y-auto flex flex-col py-8 space-y-8 z-40">
@@ -28,9 +30,13 @@ export default function SideNav({ pollingMinutes }: { pollingMinutes: number }) 
       </div>
 
       <nav className="flex-1 space-y-2">
-        <Link href="/candidates" className={!isSettings ? ACTIVE : INACTIVE}>
+        <Link href="/candidates" className={isCandidates ? ACTIVE : INACTIVE}>
           <span className="material-symbols-outlined">group</span>
           <span className="font-headline font-bold tracking-tight text-sm">Candidates</span>
+        </Link>
+        <Link href="/logs" className={isLogs ? ACTIVE : INACTIVE}>
+          <span className="material-symbols-outlined">history</span>
+          <span className="font-headline font-bold tracking-tight text-sm">Logs</span>
         </Link>
         <Link href="/settings" className={isSettings ? ACTIVE : INACTIVE}>
           <span className="material-symbols-outlined">settings</span>

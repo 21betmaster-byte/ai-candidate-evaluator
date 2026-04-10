@@ -28,6 +28,12 @@ class ParsedResume:
     urls: list[str]
     resume_present: bool
     any_attachment: bool
+    # Parse statistics for logging
+    file_format: str | None = None  # "pdf" | "docx" | None
+    text_length: int = 0
+    url_count_from_text: int = 0
+    url_count_from_annotations: int = 0
+    parse_errors: list[str] | None = None
 
 
 def _is_pdf(a: Attachment) -> bool:
@@ -40,28 +46,41 @@ def _is_docx(a: Attachment) -> bool:
 
 def parse_resume(attachments: list[Attachment]) -> ParsedResume:
     any_attachment = bool(attachments)
+    errors: list[str] = []
 
     # Prefer PDF, fall back to DOCX.
     pdf = next((a for a in attachments if _is_pdf(a)), None)
     if pdf is not None:
-        text, urls = parse_pdf_bytes(pdf.data)
+        text, urls, text_url_count, annot_url_count, errs = _parse_pdf_with_stats(pdf.data)
+        errors.extend(errs)
         return ParsedResume(
             selected_filename=pdf.filename,
             text=text,
             urls=urls,
             resume_present=True,
             any_attachment=any_attachment,
+            file_format="pdf",
+            text_length=len(text),
+            url_count_from_text=text_url_count,
+            url_count_from_annotations=annot_url_count,
+            parse_errors=errors or None,
         )
 
     docx_att = next((a for a in attachments if _is_docx(a)), None)
     if docx_att is not None:
-        text, urls = parse_docx_bytes(docx_att.data)
+        text, urls, text_url_count, annot_url_count, errs = _parse_docx_with_stats(docx_att.data)
+        errors.extend(errs)
         return ParsedResume(
             selected_filename=docx_att.filename,
             text=text,
             urls=urls,
             resume_present=True,
             any_attachment=any_attachment,
+            file_format="docx",
+            text_length=len(text),
+            url_count_from_text=text_url_count,
+            url_count_from_annotations=annot_url_count,
+            parse_errors=errors or None,
         )
 
     return ParsedResume(None, "", [], resume_present=False, any_attachment=any_attachment)
@@ -161,6 +180,28 @@ def _merge_urls(text_urls: list[str], annot_urls: list[str]) -> list[str]:
             seen.add(u)
             merged.append(u)
     return merged
+
+
+def _parse_pdf_with_stats(data: bytes) -> tuple[str, list[str], int, int, list[str]]:
+    """Returns (text, merged_urls, text_url_count, annot_url_count, errors)."""
+    errors: list[str] = []
+    text = extract_pdf_text(data)
+    if not text and data:
+        errors.append("pdf_text_extraction_empty")
+    text_urls = find_urls(text)
+    annot_urls = extract_pdf_link_uris(data)
+    return text, _merge_urls(text_urls, annot_urls), len(text_urls), len(annot_urls), errors
+
+
+def _parse_docx_with_stats(data: bytes) -> tuple[str, list[str], int, int, list[str]]:
+    """Returns (text, merged_urls, text_url_count, annot_url_count, errors)."""
+    errors: list[str] = []
+    text = extract_docx_text(data)
+    if not text and data:
+        errors.append("docx_text_extraction_empty")
+    text_urls = find_urls(text)
+    annot_urls = extract_docx_link_uris(data)
+    return text, _merge_urls(text_urls, annot_urls), len(text_urls), len(annot_urls), errors
 
 
 def parse_pdf_bytes(data: bytes) -> tuple[str, list[str]]:

@@ -213,6 +213,12 @@ class FakeParsedResume:
         self.text = text
         self.urls = list(urls or [])
         self.selected_filename = filename
+        # Logging fields
+        self.file_format = "pdf" if resume_present else None
+        self.text_length = len(text)
+        self.url_count_from_text = len(self.urls)
+        self.url_count_from_annotations = 0
+        self.parse_errors = None
 
 
 def fake_parse_resume_factory(text="Jane Doe — Senior Engineer\n5 years experience", urls=None):
@@ -240,7 +246,7 @@ def _fake_classify(email):
     body = (email.body_text or "").lower()
     subj = (email.subject or "").lower()
     if "out of office" in subj or "automatic reply" in subj:
-        return {"category": "auto_reply", "reason": "", "question_text": ""}
+        return {"category": "auto_reply", "reason": "", "question_text": "", "heuristic_shortcut": "auto_reply_subject"}
     if any(k in body for k in ("asdfasdf", "qwerty", "lorem ipsum random")):
         return {"category": "gibberish", "reason": "", "question_text": ""}
     if "buy our product" in body or "sponsored" in body:
@@ -248,7 +254,7 @@ def _fake_classify(email):
     if body.strip().endswith("?") and "salary" in body:
         return {"category": "question", "reason": "", "question_text": body[:200]}
     if email.attachments or "apply" in body or "application" in body or "resume" in body:
-        return {"category": "application", "reason": "", "question_text": ""}
+        return {"category": "application", "reason": "", "question_text": "", "confidence": 0.0}
     return {"category": "other", "reason": "", "question_text": ""}
 
 
@@ -288,6 +294,12 @@ def _fake_structure(resume_text, github_data, portfolio_data):
         "summary": "Senior engineer who ships.",
         "technical_signals": ["Python", "Postgres"],
         "shipped_products": ["cool-app"],
+        "_llm_meta": {"llm_model": "test", "llm_input_tokens": 0, "llm_output_tokens": 0,
+                      "llm_cache_read_tokens": 0, "llm_cache_creation_tokens": 0, "llm_duration_ms": 0},
+        "_extraction_stats": {"has_name": True, "has_headline": False, "years_of_experience": None,
+                              "work_experience_count": 0, "shipped_products_count": 1,
+                              "education_count": 0, "has_github_signal": False,
+                              "has_portfolio_signal": False, "portfolio_flags_overridden": False},
     }
 
 
@@ -301,6 +313,9 @@ def _fake_score(profile, rubric):
         },
         "overall_score": 75.5,
         "decision_reason": "Strong fit across all rubric dimensions.",
+        "_llm_meta": {"llm_model": "test", "llm_input_tokens": 0, "llm_output_tokens": 0,
+                      "llm_cache_read_tokens": 0, "llm_cache_creation_tokens": 0, "llm_duration_ms": 0},
+        "_clamped_dimensions": [],
     }
 
 

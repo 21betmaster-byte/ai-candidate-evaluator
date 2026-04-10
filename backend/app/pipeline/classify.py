@@ -15,7 +15,7 @@ the resume/url-extraction step. The classifier's only job is to route.
 from __future__ import annotations
 
 from app.gmail.client import InboundEmail
-from app.llm import call_sonnet, parse_json_block
+from app.llm import call_sonnet, parse_json_block, LLMResult
 
 CLASSIFY_SYSTEM = """You are an email triage assistant for a hiring inbox.
 
@@ -43,9 +43,9 @@ def classify_email(email: InboundEmail) -> dict:
     subject_l = (email.subject or "").lower()
     body_l = (email.body_text or "").lower()
     if any(k in subject_l for k in ("out of office", "auto-reply", "automatic reply", "vacation")):
-        return {"category": "auto_reply", "reason": "subject indicates auto-reply", "question_text": ""}
+        return {"category": "auto_reply", "reason": "subject indicates auto-reply", "question_text": "", "heuristic_shortcut": "auto_reply_subject"}
     if not body_l.strip() and not email.attachments:
-        return {"category": "gibberish", "reason": "empty body, no attachments", "question_text": ""}
+        return {"category": "gibberish", "reason": "empty body, no attachments", "question_text": "", "heuristic_shortcut": "empty_body"}
 
     user = (
         f"Subject: {email.subject}\n"
@@ -53,11 +53,11 @@ def classify_email(email: InboundEmail) -> dict:
         f"Has attachments: {len(email.attachments)} ({', '.join(a.filename for a in email.attachments) or 'none'})\n\n"
         f"Body:\n{(email.body_text or '')[:4000]}"
     )
-    raw = call_sonnet(CLASSIFY_SYSTEM, user, max_tokens=400)
+    llm_result = call_sonnet(CLASSIFY_SYSTEM, user, max_tokens=400)
     try:
-        data = parse_json_block(raw)
+        data = parse_json_block(llm_result.text)
     except Exception:
-        return {"category": "other", "reason": "classifier returned unparseable JSON", "question_text": ""}
+        return {"category": "other", "reason": "classifier returned unparseable JSON", "question_text": "", "_llm_meta": llm_result.meta_dict(), "_parse_error": True}
     cat = data.get("category", "other")
     if cat not in VALID_CATEGORIES:
         cat = "other"
@@ -71,4 +71,5 @@ def classify_email(email: InboundEmail) -> dict:
         "question_text": data.get("question_text", "")[:1000],
         "review_reason": (data.get("review_reason") or "")[:500],
         "confidence": max(0.0, min(1.0, confidence)),
+        "_llm_meta": llm_result.meta_dict(),
     }

@@ -30,6 +30,7 @@ def update_settings_route(body: SettingsModel, db: Session = Depends(get_db), us
     row.tier_thresholds = body.tier_thresholds
     row.pass_next_steps_text = body.pass_next_steps_text
     row.reminder_hours = body.reminder_hours
+    row.incomplete_expiry_days = body.incomplete_expiry_days
     row.company_name = body.company_name
     db.add(row)
     db.commit()

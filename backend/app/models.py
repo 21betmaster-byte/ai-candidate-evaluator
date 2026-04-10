@@ -33,6 +33,7 @@ JOB_TYPES = (
     "send_decision_email",
     "send_template_email",
     "send_reminder",
+    "auto_reject_incomplete",
 )
 
 JOB_STATUSES = ("pending", "running", "done", "failed")
@@ -153,6 +154,7 @@ class AppSettings(Base):
     tier_thresholds: Mapped[dict] = mapped_column(JSONB, default=dict)
     pass_next_steps_text: Mapped[str] = mapped_column(Text, default="")
     reminder_hours: Mapped[int] = mapped_column(Integer, default=48)
+    incomplete_expiry_days: Mapped[int] = mapped_column(Integer, default=7)
     company_name: Mapped[str] = mapped_column(String(128), default="Plum")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

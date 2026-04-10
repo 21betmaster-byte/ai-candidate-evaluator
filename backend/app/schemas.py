@@ -51,6 +51,12 @@ class ProcessingLogEntry(BaseModel):
         from_attributes = True
 
 
+class LogEntryWithCandidate(ProcessingLogEntry):
+    candidate_id: int | None
+    candidate_name: str | None
+    candidate_email: str | None
+
+
 class EmailHistoryEntry(BaseModel):
     """One row of the email conversation between us and the candidate.
 
@@ -131,8 +137,9 @@ class SettingsModel(BaseModel):
     polling_minutes: int = Field(..., ge=1, le=120)
     rubric: list[RubricDimension]
     tier_thresholds: dict[str, int]
-    pass_next_steps_text: str
+    pass_next_steps_text: str = ""
     reminder_hours: int = Field(..., ge=1, le=336)
+    incomplete_expiry_days: int = Field(..., ge=1, le=30)
     company_name: str = Field(..., min_length=1, max_length=128)
 
     class Config:

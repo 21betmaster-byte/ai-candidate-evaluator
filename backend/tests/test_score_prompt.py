@@ -21,6 +21,12 @@ import pytest
 
 from app.pipeline import score as score_mod
 from app.pipeline.score import compute_weighted, score_candidate
+from app.llm import LLMResult
+
+
+def _fake_llm_result(text: str) -> LLMResult:
+    return LLMResult(text=text, model="test", input_tokens=0, output_tokens=0,
+                     cache_read_tokens=0, cache_creation_tokens=0, duration_ms=0)
 
 
 CUSTOM_RUBRIC = [
@@ -70,7 +76,7 @@ class TestScoreCandidateCustomDimensions:
     def test_custom_dimensions_round_trip(self):
         opus_raw = self._opus_response_for(CUSTOM_RUBRIC, value=80)
 
-        with patch.object(score_mod, "call_opus", return_value=opus_raw):
+        with patch.object(score_mod, "call_opus", return_value=_fake_llm_result(opus_raw)):
             result = score_candidate(profile={"name": "Test"}, rubric=CUSTOM_RUBRIC)
 
         assert set(result["scores"].keys()) == {"design_taste", "storytelling", "builder_mindset"}
@@ -87,7 +93,7 @@ class TestScoreCandidateCustomDimensions:
         def _fake(system, user, **kwargs):
             captured["system"] = system
             captured["user"] = user
-            return '{"scores":{},"decision_reason":""}'
+            return _fake_llm_result('{"scores":{},"decision_reason":""}')
 
         with patch.object(score_mod, "call_opus", side_effect=_fake):
             score_candidate(profile={}, rubric=CUSTOM_RUBRIC)
@@ -102,7 +108,7 @@ class TestScoreCandidateCustomDimensions:
     def test_missing_keys_in_opus_response_become_zero(self):
         """Opus can forget a key under load; we must not 500."""
         partial = '{"scores":{"design_taste":{"score":90,"reasoning":"great"}},"decision_reason":""}'
-        with patch.object(score_mod, "call_opus", return_value=partial):
+        with patch.object(score_mod, "call_opus", return_value=_fake_llm_result(partial)):
             result = score_candidate(profile={}, rubric=CUSTOM_RUBRIC)
 
         assert result["scores"]["design_taste"]["score"] == 90
@@ -113,7 +119,7 @@ class TestScoreCandidateCustomDimensions:
 
     def test_out_of_range_scores_clamped(self):
         bad = '{"scores":{"design_taste":{"score":9999,"reasoning":""},"storytelling":{"score":-5,"reasoning":""},"builder_mindset":{"score":50,"reasoning":""}},"decision_reason":""}'
-        with patch.object(score_mod, "call_opus", return_value=bad):
+        with patch.object(score_mod, "call_opus", return_value=_fake_llm_result(bad)):
             result = score_candidate(profile={}, rubric=CUSTOM_RUBRIC)
         assert result["scores"]["design_taste"]["score"] == 100
         assert result["scores"]["storytelling"]["score"] == 0
@@ -121,7 +127,7 @@ class TestScoreCandidateCustomDimensions:
 
     def test_non_integer_score_from_opus_becomes_zero(self):
         weird = '{"scores":{"design_taste":{"score":"eighty","reasoning":""},"storytelling":{"score":50,"reasoning":""},"builder_mindset":{"score":50,"reasoning":""}},"decision_reason":""}'
-        with patch.object(score_mod, "call_opus", return_value=weird):
+        with patch.object(score_mod, "call_opus", return_value=_fake_llm_result(weird)):
             result = score_candidate(profile={}, rubric=CUSTOM_RUBRIC)
         assert result["scores"]["design_taste"]["score"] == 0
 
@@ -133,7 +139,7 @@ class TestScoreCandidateCustomDimensions:
             '"builder_mindset":{"score":50,"reasoning":""}},'
             f'"decision_reason":"{long_reason}"' + "}"
         )
-        with patch.object(score_mod, "call_opus", return_value=payload):
+        with patch.object(score_mod, "call_opus", return_value=_fake_llm_result(payload)):
             result = score_candidate(profile={}, rubric=CUSTOM_RUBRIC)
         assert len(result["decision_reason"]) <= 500
 
