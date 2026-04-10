@@ -16,16 +16,14 @@ export default function SignIn({
     "use server";
     const email = formData.get("email")?.toString() ?? "";
     const password = formData.get("password")?.toString() ?? "";
-    const from = formData.get("from")?.toString() || "/candidates";
-
     try {
       // redirect:false -> we handle the redirect ourselves on success.
       await signIn("credentials", { email, password, redirect: false });
     } catch {
       // Auth.js throws on invalid creds; surface a friendly error via query.
-      redirect(`/signin?from=${encodeURIComponent(from)}&error=1`);
+      redirect(`/signin?error=1`);
     }
-    redirect(from);
+    redirect("/candidates");
   }
 
   return (
