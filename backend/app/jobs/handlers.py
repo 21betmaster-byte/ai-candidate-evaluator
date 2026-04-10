@@ -343,8 +343,11 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         # must not block the handoff.
         try:
             parsed = parse_resume(email.attachments)
-        except Exception:
+        except Exception as e:
             parsed = None
+            log_event(db, cand.id if cand else None, "parse_resume", "best-effort resume parse failed during intake review", level="warn", meta={
+                "reason": str(e)[:300],
+            })
         ev = _new_evaluation(db, cand, source_message_id=message_id)
         if parsed is not None:
             ev.raw_resume_text = parsed.text or None
@@ -543,6 +546,9 @@ def _mark_incomplete_and_remind(
     missing_items, send the candidate-facing template, and schedule a reminder."""
     cand.status = "incomplete"
     cand.missing_items = missing
+    log_event(db, cand.id, "incomplete", "candidate marked incomplete — missing required materials", level="warn", meta={
+        "reason": "missing required materials", "missing_items": missing, "template": template,
+    })
     _enqueue_send_template(db, cand.id, template, {
         "name": cand.name, "to": cand.email, "missing": missing,
     })
@@ -575,7 +581,9 @@ def handle_discover_secondary(db: Session, job: Job) -> None:
     try:
         pdata = fetch_portfolio(ev.portfolio_url)
     except PortfolioCandidateError as e:
-        _log_step(db, cand.id, "discover_secondary", f"portfolio rejected: {e}", level="warn")
+        _log_step(db, cand.id, "discover_secondary", f"portfolio rejected: {e}", level="warn", meta={
+            "reason": str(e)[:300], "portfolio_url": ev.portfolio_url,
+        })
         missing: list[str] = []
         if not has_resume:
             missing.append("a resume PDF (attached to your email)")
@@ -687,7 +695,9 @@ def handle_fetch_github(db: Session, job: Job) -> None:
         except GitHubCandidateError as e:
             ctx["outcome"] = "candidate_error"
             ctx["error"] = str(e)[:200]
-            log_event(db, cand.id, "fetch_github", f"candidate-side error: {e}", level="warn")
+            log_event(db, cand.id, "fetch_github", f"candidate-side error: {e}", level="warn", meta={
+                "reason": str(e)[:300], "github_url": ev.github_url,
+            })
             missing = list(cand.missing_items or [])
             gh_item = "a working public GitHub profile link"
             if gh_item not in missing:
@@ -750,7 +760,9 @@ def handle_fetch_portfolio(db: Session, job: Job) -> None:
             except PortfolioCandidateError as e:
                 ctx["outcome"] = "candidate_error"
                 ctx["error"] = str(e)[:200]
-                log_event(db, cand.id, "fetch_portfolio", f"portfolio rejected: {e}", level="warn")
+                log_event(db, cand.id, "fetch_portfolio", f"portfolio rejected: {e}", level="warn", meta={
+                    "reason": str(e)[:300], "portfolio_url": ev.portfolio_url,
+                })
                 portfolio_error = str(e)[:200]
             except PortfolioInfraError:
                 raise
@@ -932,10 +944,20 @@ def handle_decide(db: Session, job: Job) -> None:
     elif tier == "auto_fail":
         template_sent = "fail_decision"
 
+    pass_floor = thresholds.get("auto_pass_floor", 50)
+    fail_ceil = thresholds.get("auto_fail_ceiling", 48)
+    if tier == "auto_pass":
+        reason = f"score {score} >= auto_pass_floor {pass_floor}"
+    elif tier == "auto_fail":
+        reason = f"score {score} <= auto_fail_ceiling {fail_ceil}"
+    else:
+        reason = f"score {score} between auto_fail_ceiling {fail_ceil} and auto_pass_floor {pass_floor}"
+
     _log_step(db, cand.id, "decide", f"tier={tier} score={score}")
     log_event(db, cand.id, "decide.detail", f"tier={tier} score={score}", meta={
         "tier": tier,
         "score": score,
+        "reason": reason,
         "thresholds": thresholds,
         "threshold_distances": distances,
         "template_sent": template_sent,
@@ -1007,7 +1029,9 @@ def handle_send_template_email(db: Session, job: Job) -> None:
 def handle_send_reminder(db: Session, job: Job) -> None:
     """Send reminder ONLY if candidate is still incomplete with the same missing items."""
     if not job.candidate_id:
-        log_event(db, None, "send_reminder", "BUG: job has no candidate_id", level="error", meta={"job_id": job.id})
+        log_event(db, None, "send_reminder", "BUG: job has no candidate_id", level="error", meta={
+            "job_id": job.id, "reason": "job payload missing candidate_id", "payload": str(job.payload)[:200],
+        })
         return
     cand = db.get(Candidate, job.candidate_id)
     if not cand or cand.status != "incomplete":
@@ -1055,7 +1079,9 @@ def handle_send_reminder(db: Session, job: Job) -> None:
 def handle_auto_reject_incomplete(db: Session, job: Job) -> None:
     """Auto-reject candidate if still incomplete after expiry period."""
     if not job.candidate_id:
-        log_event(db, None, "auto_reject_incomplete", "BUG: job has no candidate_id", level="error", meta={"job_id": job.id})
+        log_event(db, None, "auto_reject_incomplete", "BUG: job has no candidate_id", level="error", meta={
+            "job_id": job.id, "reason": "job payload missing candidate_id", "payload": str(job.payload)[:200],
+        })
         return
     cand = db.get(Candidate, job.candidate_id)
     if not cand or cand.status != "incomplete":
