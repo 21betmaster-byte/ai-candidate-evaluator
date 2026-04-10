@@ -1,4 +1,4 @@
-# Testing — runbook for the leadership demo
+# Testing — 
 
 The product has four test tiers. Three are hermetic and fast (no network,
 no real services). One is opt-in and hits real Gmail. Run the hermetic
@@ -36,9 +36,6 @@ cd backend && source .venv/bin/activate && \
   GMAIL_LABEL_PROCESSED=evaluator/test-live RUN_LIVE_TESTS=1 \
   pytest -m live
 ```
-
-If anything is red, **do not demo**. The suite is hermetic and fast for
-exactly this reason — no excuse to ship a red main to leadership.
 
 ---
 
@@ -294,8 +291,6 @@ npx playwright test --project=authenticated-webkit        # functional only on S
 
 ### Visual regression — `tests/e2e/visual.spec.ts`
 
-Captures full-page screenshots of the four screens leadership will see
-during the demo and asserts byte-similarity against committed baselines:
 
 | Screen | File |
 |---|---|
