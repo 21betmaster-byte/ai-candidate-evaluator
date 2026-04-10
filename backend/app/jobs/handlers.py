@@ -890,8 +890,8 @@ def handle_decide(db: Session, job: Job) -> None:
     score = ev.overall_score or 0.0
     # Distance from nearest threshold boundary
     distances = {
-        "to_auto_pass": round(thresholds.get("auto_pass_floor", 70) - score, 2),
-        "to_auto_fail_ceiling": round(score - thresholds.get("auto_fail_ceiling", 49), 2),
+        "to_auto_pass": round(thresholds.get("auto_pass_floor", 50) - score, 2),
+        "to_auto_fail_ceiling": round(score - thresholds.get("auto_fail_ceiling", 48), 2),
     }
     template_sent = None
     if tier == "auto_pass":

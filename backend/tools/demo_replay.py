@@ -100,12 +100,12 @@ _TEMPLATE_LOGIC: dict[str, str] = {
     ),
     "pass_decision": (
         "The candidate's weighted score met or exceeded the auto-pass threshold.\n"
-        "  Rule: overall_score >= auto_pass_floor (default 70).\n"
+        "  Rule: overall_score >= auto_pass_floor (default 50).\n"
         "  The system sends a congratulatory email with configured next-steps text."
     ),
     "fail_decision": (
         "The candidate's weighted score fell below the auto-fail ceiling.\n"
-        "  Rule: overall_score <= auto_fail_ceiling (default 49).\n"
+        "  Rule: overall_score <= auto_fail_ceiling (default 48).\n"
         "  A polite rejection is sent. Scores and rubric details are never included."
     ),
     "missing_items": (
@@ -462,8 +462,8 @@ def _render_decision(evaluation: Evaluation | None, settings: AppSettings | None
     tier = evaluation.tier
     score = evaluation.overall_score
     thresholds = (settings.tier_thresholds if settings else None) or {}
-    af = thresholds.get("auto_fail_ceiling", 49)
-    ap = thresholds.get("auto_pass_floor", 70)
+    af = thresholds.get("auto_fail_ceiling", 48)
+    ap = thresholds.get("auto_pass_floor", 50)
 
     tier_display = tier.upper().replace("_", " ")
     if tier == "auto_pass":

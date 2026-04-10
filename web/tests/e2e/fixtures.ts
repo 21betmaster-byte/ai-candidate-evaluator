@@ -44,25 +44,40 @@ export function makeSettings(overrides: Partial<SettingsModel> = {}): SettingsMo
     polling_minutes: 2,
     rubric: [
       {
+        key: "shipped_products",
+        description: "End-to-end product ownership, PM signals, career trajectory.",
+        weight: 30,
+      },
+      {
         key: "technical_depth",
         description: "Engineering chops: systems, stack fluency, trade-offs.",
-        weight: 40,
-      },
-      {
-        key: "shipped_products",
-        description: "Track record of launching real products end-to-end.",
-        weight: 35,
-      },
-      {
-        key: "business_thinking",
-        description: "Connects engineering decisions to user + business outcomes.",
         weight: 25,
+      },
+      {
+        key: "business_and_product_thinking",
+        description: "Connects work to user value and business outcomes.",
+        weight: 15,
+      },
+      {
+        key: "speed_and_bias_to_action",
+        description: "Moving fast under ambiguity and constraint.",
+        weight: 15,
+      },
+      {
+        key: "pedigree_and_relevance",
+        description: "Education, employers, community standing.",
+        weight: 10,
+      },
+      {
+        key: "communication_clarity",
+        description: "Explains complex ideas simply and clearly.",
+        weight: 5,
       },
     ],
     tier_thresholds: {
-      auto_fail_ceiling: 49,
-      manual_review_ceiling: 69,
-      auto_pass_floor: 70,
+      auto_fail_ceiling: 48,
+      manual_review_ceiling: 49,
+      auto_pass_floor: 50,
     },
     pass_next_steps_text: "Reply with times that work for a 30-min call.",
     reminder_hours: 48,
@@ -120,12 +135,15 @@ export function makeCandidateDetail(
         },
       },
       scores: {
-        technical_depth: { score: 91, reasoning: "Strong systems work and deep stack fluency." },
         shipped_products: { score: 85, reasoning: "Led internal DX platform adopted by 120 engineers." },
-        business_thinking: { score: 74, reasoning: "Connects infra choices to engineer productivity metrics." },
+        technical_depth: { score: 91, reasoning: "Strong systems work and deep stack fluency." },
+        business_and_product_thinking: { score: 74, reasoning: "Connects infra choices to engineer productivity metrics." },
+        speed_and_bias_to_action: { score: 80, reasoning: "Rapid iteration on DX tooling." },
+        pedigree_and_relevance: { score: 70, reasoning: "Strong company background." },
+        communication_clarity: { score: 82, reasoning: "Clear technical writing." },
       },
-      overall_score: 84.1,
-      tier: "manual_review",
+      overall_score: 82.95,
+      tier: "auto_pass",
       decision_reason:
         "Strong builder with clear production impact and tasteful design thinking.",
       created_at: "2026-04-05T09:20:00Z",

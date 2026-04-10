@@ -35,9 +35,9 @@ def _base_payload() -> dict:
             },
         ],
         "tier_thresholds": {
-            "auto_fail_ceiling": 49,
-            "manual_review_ceiling": 69,
-            "auto_pass_floor": 70,
+            "auto_fail_ceiling": 48,
+            "manual_review_ceiling": 49,
+            "auto_pass_floor": 50,
         },
         "pass_next_steps_text": "Reply with times that work.",
         "reminder_hours": 48,
