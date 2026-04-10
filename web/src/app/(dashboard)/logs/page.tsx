@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import { backend } from "@/lib/backend";
+import EmailSearchInput from "@/components/EmailSearchInput";
 import type { LogEntryWithCandidate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ const PAGE_SIZE = 100;
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ level?: string; step?: string; page?: string }>;
+  searchParams: Promise<{ level?: string; step?: string; page?: string; email?: string }>;
 }) {
   const sp = await searchParams;
   const h = await headers();
@@ -37,6 +38,7 @@ export default async function LogsPage({
       {
         level: sp.level || undefined,
         step: sp.step || undefined,
+        email: sp.email || undefined,
         limit: PAGE_SIZE,
         offset,
       },
@@ -46,8 +48,6 @@ export default async function LogsPage({
     error = (err as Error).message;
   }
 
-  const errorCount = logs.filter((l) => l.level === "error").length;
-  const warnCount = logs.filter((l) => l.level === "warn").length;
   const steps = [...new Set(logs.map((l) => l.step))].sort();
 
   return (
@@ -61,13 +61,6 @@ export default async function LogsPage({
         </p>
       </header>
 
-      {/* Metrics */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-        <MetricCard label="Logs Shown" value={logs.length.toString()} accent />
-        <MetricCard label="Errors" value={errorCount.toString()} hint="In current view" />
-        <MetricCard label="Warnings" value={warnCount.toString()} hint="In current view" />
-      </section>
-
       {/* Filters */}
       <section className="bg-surface-container-low rounded-[2rem] p-4">
         <div className="px-8 py-6 flex flex-wrap justify-between items-end gap-4">
@@ -77,10 +70,14 @@ export default async function LogsPage({
             </h2>
             <p className="text-sm opacity-60 mt-1">Newest first</p>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            <LevelTabs current={sp.level ?? ""} currentStep={sp.step ?? ""} />
+          <div className="flex gap-3 flex-wrap items-center">
+            <EmailSearchInput
+              currentEmail={sp.email ?? ""}
+              currentParams={{ level: sp.level ?? "", step: sp.step ?? "" }}
+            />
+            <LevelTabs current={sp.level ?? ""} currentStep={sp.step ?? ""} currentEmail={sp.email ?? ""} />
             {steps.length > 0 && (
-              <StepFilter current={sp.step ?? ""} currentLevel={sp.level ?? ""} steps={steps} />
+              <StepFilter current={sp.step ?? ""} currentLevel={sp.level ?? ""} currentEmail={sp.email ?? ""} steps={steps} />
             )}
           </div>
         </div>
@@ -94,7 +91,9 @@ export default async function LogsPage({
           <div className="px-8 py-16 text-center text-on-surface-variant">
             <p className="font-headline font-bold text-lg">No logs found</p>
             <p className="text-sm mt-2">
-              Processing logs will appear here once candidates are evaluated.
+              {sp.email
+                ? `No logs match the email "${sp.email}". Try a different search or clear the filter.`
+                : "Processing logs will appear here once candidates are evaluated."}
             </p>
           </div>
         ) : (
@@ -190,35 +189,7 @@ function buildUrl(params: Record<string, string | undefined>) {
   return `/logs${suffix}`;
 }
 
-function MetricCard({
-  label,
-  value,
-  hint,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="bg-surface-container-lowest p-8 rounded-[2rem] shadow-editorial-soft flex flex-col gap-2">
-      <span className="text-xs font-bold uppercase tracking-widest opacity-50 font-label">
-        {label}
-      </span>
-      <span
-        className={`text-5xl font-headline font-black ${accent ? "text-primary" : "text-on-surface"}`}
-      >
-        {value}
-      </span>
-      {hint && (
-        <span className="text-[10px] opacity-40 font-bold uppercase mt-4">{hint}</span>
-      )}
-    </div>
-  );
-}
-
-function LevelTabs({ current, currentStep }: { current: string; currentStep: string }) {
+function LevelTabs({ current, currentStep, currentEmail }: { current: string; currentStep: string; currentEmail: string }) {
   return (
     <div className="flex gap-2">
       {LEVEL_FILTERS.map((f) => {
@@ -226,6 +197,7 @@ function LevelTabs({ current, currentStep }: { current: string; currentStep: str
         const params: Record<string, string> = {};
         if (f.key) params.level = f.key;
         if (currentStep) params.step = currentStep;
+        if (currentEmail) params.email = currentEmail;
         return (
           <Link
             key={f.key}
@@ -247,17 +219,19 @@ function LevelTabs({ current, currentStep }: { current: string; currentStep: str
 function StepFilter({
   current,
   currentLevel,
+  currentEmail,
   steps,
 }: {
   current: string;
   currentLevel: string;
+  currentEmail: string;
   steps: string[];
 }) {
   return (
     <div className="flex gap-2 items-center">
       <span className="text-xs opacity-40 font-bold uppercase">Step:</span>
       <Link
-        href={buildUrl({ level: currentLevel || undefined })}
+        href={buildUrl({ level: currentLevel || undefined, email: currentEmail || undefined })}
         className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
           !current
             ? "bg-primary text-on-primary"
@@ -269,7 +243,7 @@ function StepFilter({
       {steps.map((s) => (
         <Link
           key={s}
-          href={buildUrl({ step: s, level: currentLevel || undefined })}
+          href={buildUrl({ step: s, level: currentLevel || undefined, email: currentEmail || undefined })}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
             current === s
               ? "bg-primary text-on-primary"

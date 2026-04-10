@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.logging_setup import configure_logging
-from app.routes import candidates, logs as logs_route, settings as settings_route, poll
+from app.routes import candidates, logs as logs_route, metrics as metrics_route, settings as settings_route, poll
 
 configure_logging()
 log = logging.getLogger(__name__)
@@ -113,6 +113,7 @@ app.add_middleware(
 
 app.include_router(candidates.router)
 app.include_router(logs_route.router)
+app.include_router(metrics_route.router)
 app.include_router(settings_route.router)
 app.include_router(poll.router)
 

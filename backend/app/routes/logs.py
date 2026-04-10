@@ -17,6 +17,7 @@ def list_logs(
     step: str | None = Query(default=None),
     level: str | None = Query(default=None),
     candidate_id: int | None = Query(default=None),
+    email: str | None = Query(default=None, max_length=254),
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -43,6 +44,9 @@ def list_logs(
         q = q.filter(ProcessingLog.level == level)
     if candidate_id is not None:
         q = q.filter(ProcessingLog.candidate_id == candidate_id)
+    if email:
+        safe = email.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        q = q.filter(Candidate.email.ilike(f"%{safe}%", escape="\\"))
 
     # Group by candidate: newest-active candidate first, chronological within group.
     # System logs (candidate_id IS NULL) sort to the end.

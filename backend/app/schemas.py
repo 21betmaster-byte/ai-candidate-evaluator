@@ -157,3 +157,50 @@ class SettingsModel(BaseModel):
         if total != 100:
             raise ValueError(f"rubric weights must sum to 100 (got {total})")
         return v
+
+
+# ── Metrics ──────────────────────────────────────────────────────────
+
+
+class NotTrackedMetric(BaseModel):
+    value: None = None
+    reason: str
+
+
+class TechnicalMetrics(BaseModel):
+    ack_latency_seconds: float | None
+    evaluation_latency_seconds: float | None
+    decision_email_latency_seconds: float | None
+    processing_error_rate: float | None
+    retry_success_rate: float | None
+    override_rate: float | None
+    edge_case_classification_accuracy: NotTrackedMetric
+    duplicate_detection_accuracy: NotTrackedMetric
+    email_bounce_rate: NotTrackedMetric
+    agent_uptime: NotTrackedMetric
+    dashboard_load_time: NotTrackedMetric
+
+
+class FunnelEntry(BaseModel):
+    status: str
+    count: int
+
+
+class DailyCount(BaseModel):
+    date: str
+    count: int
+
+
+class BusinessMetrics(BaseModel):
+    funnel: list[FunnelEntry]
+    avg_time_to_decision_seconds: float | None
+    pass_rate: float | None
+    avg_score: float | None
+    candidates_per_day: list[DailyCount]
+    total_llm_input_tokens: int
+    total_llm_output_tokens: int
+
+
+class MetricsResponse(BaseModel):
+    technical: TechnicalMetrics
+    business: BusinessMetrics
