@@ -330,9 +330,16 @@ def gmail_fake() -> FakeGmail:
 
 
 @pytest.fixture(autouse=True)
-def mocked_externals(monkeypatch, gmail_fake: FakeGmail):
+def mocked_externals(request, monkeypatch, gmail_fake: FakeGmail):
     """Replace all external I/O with deterministic fakes. Tests can still
-    override individual pieces via their own monkeypatch calls."""
+    override individual pieces via their own monkeypatch calls.
+
+    Skipped for ``@pytest.mark.live`` tests — those need real services.
+    """
+    if request.node.get_closest_marker("live"):
+        yield
+        return
+
     import app.gmail.client as gmail_client
 
     monkeypatch.setattr(gmail_client, "fetch_email", gmail_fake.fetch_email)
