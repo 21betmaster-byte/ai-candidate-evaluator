@@ -174,6 +174,26 @@ def manual_decision(
     return {"ok": True, "status": cand.status}
 
 
+@router.delete("/{candidate_id}")
+def delete_candidate(
+    candidate_id: int,
+    db: Session = Depends(get_db),
+    user: str = Depends(require_user),
+):
+    cand = db.get(Candidate, candidate_id)
+    if not cand:
+        raise HTTPException(404, "candidate not found")
+    # Delete in dependency order
+    db.query(ProcessingLog).filter(ProcessingLog.candidate_id == candidate_id).delete()
+    db.query(EmailLog).filter(EmailLog.candidate_id == candidate_id).delete()
+    from app.models import Job
+    db.query(Job).filter(Job.candidate_id == candidate_id).delete()
+    db.query(Evaluation).filter(Evaluation.candidate_id == candidate_id).delete()
+    db.delete(cand)
+    db.commit()
+    return {"ok": True}
+
+
 def _settings(db: Session):
     from app.models import AppSettings
     row = db.get(AppSettings, 1)
