@@ -209,7 +209,7 @@ def structure_profile(
         "PORTFOLIO DATA:\n"
         f"{json.dumps(sanitized_portfolio or {}, indent=2)[:20000]}\n"
     )
-    llm_result = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=2500, temperature=0)
+    llm_result = call_sonnet(STRUCTURE_SYSTEM, user, max_tokens=4096, temperature=0)
     try:
         profile = parse_json_block(llm_result.text)
     except Exception:
