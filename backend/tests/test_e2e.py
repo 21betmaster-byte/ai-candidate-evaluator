@@ -86,7 +86,8 @@ def test_e2e_happy_path_complete_application(
     assert ev.overall_score == 75.5
     assert ev.tier == "auto_pass"
     assert ev.scores and set(ev.scores.keys()) == {
-        "technical_depth", "shipped_products", "business_thinking", "speed_of_execution"
+        "shipped_products", "technical_depth", "business_and_product_thinking",
+        "speed_and_bias_to_action", "pedigree_and_relevance", "communication_clarity"
     }
 
     # Outbound emails: acknowledgment + pass_decision
@@ -454,10 +455,10 @@ def test_dashboard_manual_review_pass_action(
     db, settings_row, monkeypatch, client, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
 ):
     """Force a manual_review tier and drive the dashboard POST /decision endpoint."""
-    def _mid_score(profile, rubric):
+    def _mid_score(profile, rubric, **kwargs):
         return {
-            "scores": {k: {"score": 55, "reasoning": ""} for k in ("technical_depth","shipped_products","business_thinking","speed_of_execution")},
-            "overall_score": 55.0,
+            "scores": {k: {"score": 49, "reasoning": ""} for k in ("shipped_products","technical_depth","business_and_product_thinking","speed_and_bias_to_action","pedigree_and_relevance","communication_clarity")},
+            "overall_score": 49.0,
             "decision_reason": "borderline",
         }
 
@@ -850,12 +851,14 @@ def test_short_reply_from_auto_fail_candidate_reclassified_as_application(
     import app.jobs.handlers as h
 
     # First email: full application that scores low → auto_fail
-    low_scorer = lambda profile, rubric: {
+    low_scorer = lambda profile, rubric, **kwargs: {
         "scores": {
-            "technical_depth": {"score": 20, "reasoning": "weak"},
             "shipped_products": {"score": 15, "reasoning": "none"},
-            "business_thinking": {"score": 10, "reasoning": "none"},
-            "speed_of_execution": {"score": 12, "reasoning": "none"},
+            "technical_depth": {"score": 20, "reasoning": "weak"},
+            "business_and_product_thinking": {"score": 10, "reasoning": "none"},
+            "speed_and_bias_to_action": {"score": 12, "reasoning": "none"},
+            "pedigree_and_relevance": {"score": 10, "reasoning": "none"},
+            "communication_clarity": {"score": 10, "reasoning": "none"},
         },
         "overall_score": 15.0,
         "decision_reason": "Does not meet threshold.",

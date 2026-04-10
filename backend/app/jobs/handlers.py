@@ -30,6 +30,8 @@ from app.logging_setup import log_event, log_step
 from app.models import (
     AppSettings,
     Candidate,
+    DEFAULT_RUBRIC,
+    DEFAULT_THRESHOLDS,
     EmailLog,
     Evaluation,
     Job,
@@ -872,12 +874,12 @@ def handle_score(db: Session, job: Job) -> None:
     if not cand:
         raise ValueError(f"score: candidate {ev.candidate_id} not found (job {job.id})")
     settings = _settings_row(db)
-    from app.models import DEFAULT_RUBRIC
     rubric = settings.rubric or DEFAULT_RUBRIC
     # Don't blow up the log with full descriptions — record keys + weights only.
     meta = {"rubric": [{"key": d["key"], "weight": d["weight"]} for d in rubric]}
     with log_step(db, cand.id, "score", meta=meta) as ctx:
-        result = score_candidate(ev.structured_profile or {}, rubric)
+        thresholds = settings.tier_thresholds or DEFAULT_THRESHOLDS
+        result = score_candidate(ev.structured_profile or {}, rubric, pass_threshold=thresholds.get("auto_pass_floor", 50))
         ctx["overall_score"] = result["overall_score"]
 
     # Exhaustive score logging — per-dimension scores + LLM token usage

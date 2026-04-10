@@ -163,41 +163,83 @@ class AppSettings(Base):
 
 DEFAULT_RUBRIC: list[dict] = [
     {
-        "key": "technical_depth",
-        "description": (
-            "Depth of hands-on engineering skill: shipping non-trivial systems, "
-            "picking appropriate abstractions, and fluency with the tools in the stack."
-        ),
-        "weight": 35,
-    },
-    {
         "key": "shipped_products",
         "description": (
-            "Evidence of owning and launching real products end-to-end — from "
-            "first line of code to real users — not just contributing to large codebases."
+            "Evidence of owning and launching real products end-to-end — from zero to live users. "
+            "Looks for: founding/co-founding products, solo-building MVPs, taking features from idea "
+            "to production with measurable adoption. Contributions to large codebases count only if "
+            "the candidate owned a distinct surface area (e.g., built a new service, launched a new "
+            "product line). Side projects with real users count. Hackathon prototypes and coursework "
+            "do not. Also values product management signals: defining roadmaps, writing PRDs, "
+            "conducting user research, prioritizing features based on impact vs. effort, and "
+            "coordinating cross-functional teams. Rewards relevant domain experience and career "
+            "trajectory — candidates who have leveled up (IC to lead, lead to founder) or have "
+            "direct domain overlap with the hiring company's space."
         ),
         "weight": 30,
     },
     {
-        "key": "business_thinking",
+        "key": "technical_depth",
         "description": (
-            "Ability to connect engineering decisions to product and business outcomes. "
-            "Thinks in terms of users, metrics, and trade-offs — not just tickets."
+            "Depth of hands-on engineering ability: designing non-trivial systems, choosing "
+            "appropriate abstractions, debugging hard problems, and fluency across the stack. "
+            "Signals include: system design decisions with clear trade-off reasoning, experience "
+            "with infrastructure at scale (databases, queues, caching, CI/CD), low-level debugging "
+            "war stories, and breadth across frontend/backend/infra. Certifications and course "
+            "completions are weak signals — prioritize evidence of solving real technical challenges."
         ),
-        "weight": 20,
+        "weight": 25,
     },
     {
-        "key": "speed_of_execution",
+        "key": "business_and_product_thinking",
         "description": (
-            "Track record of moving fast without breaking things that matter. "
-            "Ships iterations, unblocks self, and converts ambiguity into working software quickly."
+            "Ability to connect work to user value and business outcomes. Thinks in terms of "
+            "customers, metrics, retention, and ROI — not just technical elegance. Signals include: "
+            "referencing user feedback or data in decisions, understanding unit economics or growth "
+            "levers, and articulating why a feature matters beyond the spec. Especially valuable: "
+            "evidence of killing features that weren't working or pivoting based on data."
         ),
         "weight": 15,
+    },
+    {
+        "key": "speed_and_bias_to_action",
+        "description": (
+            "Track record of moving fast under ambiguity and constraint. Signals include: shipping "
+            "MVPs in days/weeks not months, rapid iteration cadence, unblocking themselves without "
+            "waiting for permission, compressing timelines on tight deadlines, and converting vague "
+            "requirements into working software. Hackathon wins, startup velocity, and 'built X in "
+            "Y days' narratives are strong signals. Penalize candidates who only describe long "
+            "multi-quarter projects with no evidence of urgency."
+        ),
+        "weight": 15,
+    },
+    {
+        "key": "pedigree_and_relevance",
+        "description": (
+            "Background signals from education, employers, and community standing. Tier 1 "
+            "institutions and companies (per the allow-list in the scoring prompt) are positive "
+            "signals. However, a strong builder from an unknown school or company should never be "
+            "heavily penalized — this dimension is context, not a filter. Apply the company pedigree "
+            "rule: non-Tier-1 companies get a neutral 40."
+        ),
+        "weight": 10,
+    },
+    {
+        "key": "communication_clarity",
+        "description": (
+            "Ability to explain complex ideas simply and structure thoughts clearly — in writing "
+            "and in presentation. Signals include: well-written README/docs, clear blog posts or "
+            "technical writing, structured resume with concrete specifics rather than buzzword soup, "
+            "portfolio that tells a coherent story, and any evidence of presenting to non-technical "
+            "stakeholders. Penalize vague, jargon-heavy, or disorganized communication. The resume "
+            "itself is a data point."
+        ),
+        "weight": 5,
     },
 ]
 
 DEFAULT_THRESHOLDS = {
-    "auto_fail_ceiling": 49,
-    "manual_review_ceiling": 69,
-    "auto_pass_floor": 70,
+    "auto_fail_ceiling": 48,
+    "manual_review_ceiling": 49,
+    "auto_pass_floor": 50,
 }

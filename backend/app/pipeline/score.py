@@ -113,7 +113,7 @@ def _render_rubric(rubric: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def score_candidate(profile: dict, rubric: list[dict], pass_threshold: int = 70) -> dict:
+def score_candidate(profile: dict, rubric: list[dict], pass_threshold: int = 50) -> dict:
     system = SCORE_SYSTEM.replace("{{pass_threshold}}", str(pass_threshold))
     user = (
         "RUBRIC (each dimension is authored by the hiring manager — use the "

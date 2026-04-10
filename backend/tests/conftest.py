@@ -305,13 +305,15 @@ def _fake_structure(resume_text, github_data, portfolio_data):
     }
 
 
-def _fake_score(profile, rubric):
+def _fake_score(profile, rubric, **kwargs):
     return {
         "scores": {
-            "technical_depth": {"score": 80, "reasoning": "solid stack"},
             "shipped_products": {"score": 75, "reasoning": "cool-app"},
-            "business_thinking": {"score": 70, "reasoning": "thoughtful"},
-            "speed_of_execution": {"score": 72, "reasoning": "recent activity"},
+            "technical_depth": {"score": 80, "reasoning": "solid stack"},
+            "business_and_product_thinking": {"score": 70, "reasoning": "thoughtful"},
+            "speed_and_bias_to_action": {"score": 72, "reasoning": "recent activity"},
+            "pedigree_and_relevance": {"score": 60, "reasoning": "decent background"},
+            "communication_clarity": {"score": 65, "reasoning": "clear resume"},
         },
         "overall_score": 75.5,
         "decision_reason": "Strong fit across all rubric dimensions.",

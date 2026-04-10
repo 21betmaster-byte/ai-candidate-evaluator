@@ -52,7 +52,7 @@ class TestSettingsGet:
         assert r.status_code == 200
         body = r.json()
         assert isinstance(body["rubric"], list)
-        assert len(body["rubric"]) == 4  # matches DEFAULT_RUBRIC
+        assert len(body["rubric"]) == 6  # matches DEFAULT_RUBRIC
         # Every dimension has the expected keys.
         for dim in body["rubric"]:
             assert set(dim.keys()) == {"key", "description", "weight"}
