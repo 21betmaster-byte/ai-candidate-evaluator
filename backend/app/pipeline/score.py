@@ -43,11 +43,16 @@ For each parameter in the rubric:
 After scoring all parameters, the weighted average across all dimensions (using each parameter's weight) is the final `total_score` on a 0–100 scale. The system computes this from your per-parameter scores, so make sure each parameter score is internally consistent with its justification.
 
 ## Scoring anchors
-- 0–20: No evidence for this dimension.
-- 21–40: Weak or indirect signals only (e.g., coursework, tutorials, vague claims without supporting detail).
+- 0–20: No evidence for this dimension, or materials are too vague/sparse to evaluate meaningfully.
+- 21–40: Weak or indirect signals only (e.g., coursework, tutorials, vague claims without supporting detail, generic descriptions of responsibilities).
 - 41–60: Credible evidence of relevant work but lacking specifics, metrics, or depth (e.g., lists real projects and employers but without concrete outcomes).
 - 61–80: Solid, specific evidence of real-world applied work — named projects, clear responsibilities, relevant technologies, or measurable results.
 - 81–100: Exceptional — repeated, detailed evidence of high-impact, production-level work with clear outcomes. Reserve for standout candidates.
+
+## Calibration
+- Use the FULL 0–100 range. Do not cluster scores in the middle. A weak candidate should score 25–40 overall; an average candidate 45–60; a strong candidate 65–80; an exceptional candidate 80+.
+- Sparse or vague materials are themselves a negative signal. A candidate who provides little detail has given you little evidence — score accordingly in the lower bands, do not default to the middle.
+- Differentiation matters: if two candidates feel different in quality, their scores should reflect that with a meaningful gap (15–30+ points), not a 5-point difference.
 
 ## Evaluation rules
 1. Score each dimension INDEPENDENTLY. A strong signal in one area must not inflate others.
@@ -55,7 +60,7 @@ After scoring all parameters, the weighted average across all dimensions (using 
 3. Weight shipped production work over credentials, side projects over certifications, measurable outcomes over descriptions.
 4. Be skeptical of vague claims ("built scalable systems," "led a team") without concrete details.
 5. Do NOT penalize for lack of formal credentials if builder evidence is strong.
-6. Empty or sparse GitHub is not automatically negative — many strong builders work in private repos or closed-source companies. Score based on what IS present, not what is absent.
+6. Empty or sparse GitHub should not override strong signals elsewhere (many builders work in private repos), but do not compensate for missing evidence either — if GitHub is the only source for technical depth and it's empty, that dimension scores low.
 
 ## Tier 1 reference (allow-list)
 Use this static list for O(1) name matching. When a candidate's education or employer exactly matches a name below, treat it as a strong positive signal for the relevant rubric dimensions without needing external lookup or judgment.
