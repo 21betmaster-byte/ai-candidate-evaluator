@@ -98,4 +98,5 @@ export interface SettingsModel {
   reminder_hours: number;
   incomplete_expiry_days: number;
   company_name: string;
+  last_polled_at?: string | null;
 }

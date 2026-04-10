@@ -159,6 +159,7 @@ class AppSettings(Base):
     reminder_hours: Mapped[int] = mapped_column(Integer, default=48)
     incomplete_expiry_days: Mapped[int] = mapped_column(Integer, default=7)
     company_name: Mapped[str] = mapped_column(String(128), default="Plum")
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 

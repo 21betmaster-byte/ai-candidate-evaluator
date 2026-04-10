@@ -41,17 +41,19 @@ export default async function DashboardLayout({
   // because /api/settings flaked.
   let companyName = "Plum";
   let pollingMinutes = 2;
+  let lastPolledAt: string | null = null;
   try {
     const settings = await backend.getSettings({ baseUrl, cookieHeader });
     companyName = settings.company_name;
     pollingMinutes = settings.polling_minutes;
+    lastPolledAt = settings.last_polled_at ?? null;
   } catch {
     /* fall through with defaults */
   }
 
   return (
     <div className="min-h-screen bg-surface">
-      <SideNav pollingMinutes={pollingMinutes} />
+      <SideNav pollingMinutes={pollingMinutes} lastPolledAt={lastPolledAt} />
       <TopNav companyName={companyName} userEmail={session?.user?.email ?? undefined} />
       <main className="ml-64 pt-28 px-12 pb-20">{children}</main>
     </div>

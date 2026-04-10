@@ -3,11 +3,13 @@ enqueues an `ingest_email` job for each new one. Marks the gmail message with th
 `processed` label so we never re-pick it up."""
 from __future__ import annotations
 
+from sqlalchemy import func
+
 from app.db import session_scope
 from app.gmail import client as gmail
 from app.jobs import queue
 from app.logging_setup import get_logger
-from app.models import EmailLog
+from app.models import AppSettings, EmailLog
 
 log = get_logger("poller")
 
@@ -41,4 +43,11 @@ def poll_inbox() -> int:
             queue.enqueue(db, type="ingest_email", payload={"message_id": mid})
             log.info("poller.enqueued", message_id=mid)
         new_count += 1
+
+    # Persist the poll timestamp so the dashboard can display it.
+    with session_scope() as db:
+        row = db.get(AppSettings, 1)
+        if row:
+            row.last_polled_at = func.now()
+
     return new_count

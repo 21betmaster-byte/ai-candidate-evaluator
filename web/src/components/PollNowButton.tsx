@@ -22,24 +22,33 @@ function formatIST(ts: number): string {
   return `${formatted} IST`;
 }
 
-export default function PollNowButton({ pollingMinutes }: { pollingMinutes: number }) {
+export default function PollNowButton({ pollingMinutes, serverLastPolledAt }: { pollingMinutes: number; serverLastPolledAt?: string | null }) {
   const [pending, setPending] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [lastPolledAt, setLastPolledAt] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // Hydrate persisted timestamp after mount to avoid SSR mismatch.
+  // Use the most recent of localStorage (manual polls) and the server
+  // timestamp (auto + manual polls) so the UI always shows the latest.
   useEffect(() => {
+    let localTs: number | null = null;
     try {
       const raw = window.localStorage.getItem(LAST_POLLED_AT_KEY);
       if (raw) {
         const parsed = Number(raw);
-        if (Number.isFinite(parsed)) setLastPolledAt(parsed);
+        if (Number.isFinite(parsed)) localTs = parsed;
       }
     } catch (err) {
       console.warn("[PollNow] failed to read lastPolledAt from localStorage", err);
     }
-  }, []);
+
+    const serverTs = serverLastPolledAt ? new Date(serverLastPolledAt).getTime() : null;
+    const best = [localTs, serverTs].filter((t): t is number => t !== null && Number.isFinite(t));
+    if (best.length > 0) {
+      setLastPolledAt(Math.max(...best));
+    }
+  }, [serverLastPolledAt]);
 
   async function onClick() {
     if (pending) return;

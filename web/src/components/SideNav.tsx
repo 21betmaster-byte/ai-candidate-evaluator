@@ -14,7 +14,7 @@ const BASE = "flex items-center gap-4 py-3 px-6 transition-all duration-300";
 const ACTIVE = `text-primary font-extrabold bg-surface-container-lowest rounded-r-full ${BASE}`;
 const INACTIVE = `text-on-surface/60 hover:text-primary ${BASE}`;
 
-export default function SideNav({ pollingMinutes }: { pollingMinutes: number }) {
+export default function SideNav({ pollingMinutes, lastPolledAt }: { pollingMinutes: number; lastPolledAt?: string | null }) {
   const path = usePathname() ?? "";
   const isSettings = path.startsWith("/settings");
   const isLogs = path.startsWith("/logs");
@@ -45,7 +45,7 @@ export default function SideNav({ pollingMinutes }: { pollingMinutes: number }) 
       </nav>
 
       <div className="px-6 space-y-6">
-        <PollNowButton pollingMinutes={pollingMinutes} />
+        <PollNowButton pollingMinutes={pollingMinutes} serverLastPolledAt={lastPolledAt} />
         <a
           href="/api/auth/signout"
           className="text-on-surface/60 flex items-center gap-4 py-2 px-2 hover:text-primary transition-all text-xs font-semibold border-t border-outline-variant/10 pt-4"

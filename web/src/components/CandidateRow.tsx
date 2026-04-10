@@ -84,25 +84,25 @@ export default function CandidateRow({ row }: { row: Row }) {
         <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-headline font-black text-lg flex-shrink-0">
           {initialsOf(row.name, row.email)}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 select-text">
           <p className="font-headline font-bold text-lg truncate">{displayName}</p>
           <p className="text-xs opacity-50 font-medium truncate">{row.email}</p>
         </div>
       </div>
-      <div className="w-1/6 flex flex-col items-center">
+      <div className="w-1/6 flex flex-col items-center select-text">
         <span className={`text-2xl font-headline font-black ${meta.emphasise ? "text-primary" : "text-on-surface"}`}>
           {score}
         </span>
         <span className="text-[10px] uppercase font-bold opacity-40">Intelligence Score</span>
       </div>
-      <div className="w-1/6 flex justify-center">
+      <div className="w-1/6 flex justify-center select-text">
         <span
           className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${meta.badge}`}
         >
           {meta.label}
         </span>
       </div>
-      <div className="w-1/6 text-center">
+      <div className="w-1/6 text-center select-text">
         <p className="text-sm font-semibold">{created}</p>
         <p className="text-[10px] opacity-40 font-bold uppercase">Date Indexed</p>
       </div>
