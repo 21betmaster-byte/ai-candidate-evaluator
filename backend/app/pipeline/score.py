@@ -31,13 +31,13 @@ For each parameter in the rubric:
 - Assess the candidate's materials against the parameter's description and the scoring anchors below.
 - Assign a whole-number integer score from 0–100 (no decimals).
 - Provide a 1–2 sentence justification citing specific evidence from the candidate's materials (project names, metrics, technologies, timelines, employers, institutions).
-- If no evidence is available for a parameter, score it ≤20 and state "No evidence found."
+- If no evidence is available for a parameter, score it 0–10 and state "No evidence found."
 
 ## Important rules
-- Score primarily based on observable evidence in the provided materials.
+- Score based on observable evidence in the provided materials.
 - You may make minimal, common-sense inferences where the context strongly implies it (e.g., a candidate with 4 years at a known company likely shipped production code), but do not fabricate or speculate beyond what the materials reasonably support.
 - Do not search the web for any information about institutions, companies, or the candidate. Use ONLY the Tier 1 reference list below for pedigree evaluation.
-- If a parameter cannot be evaluated due to missing materials (e.g., no GitHub link provided), score it ≤20.
+- If a parameter cannot be evaluated due to missing materials (e.g., no GitHub link provided), score it 0–10.
 
 ## Scoring calculation
 After scoring all parameters, the weighted average across all dimensions (using each parameter's weight) is the final `total_score` on a 0–100 scale. The system computes this from your per-parameter scores, so make sure each parameter score is internally consistent with its justification.
@@ -50,9 +50,11 @@ After scoring all parameters, the weighted average across all dimensions (using 
 - 81–100: Exceptional — repeated, detailed evidence of high-impact, production-level work with clear outcomes. Reserve for standout candidates.
 
 ## Calibration
-- Use the FULL 0–100 range. Do not cluster scores in the middle. A weak candidate should score 25–40 overall; an average candidate 45–60; a strong candidate 65–80; an exceptional candidate 80+.
-- Sparse or vague materials are themselves a negative signal. A candidate who provides little detail has given you little evidence — score accordingly in the lower bands, do not default to the middle.
-- Differentiation matters: if two candidates feel different in quality, their scores should reflect that with a meaningful gap (15–30+ points), not a 5-point difference.
+- USE THE FULL 0–100 RANGE. This is critical. Do not compress scores into the 45–65 band.
+- Default assumption is LOW, not middle. Start from 0 for each dimension and only move up as you find concrete evidence. The burden of proof is on the candidate's materials to justify a higher score — do not give the benefit of the doubt.
+- Target score distributions: a weak candidate should land at 20–35 overall; a mediocre candidate 36–50; a solid candidate 51–70; a strong candidate 71–85; an exceptional candidate 86+.
+- Sparse or vague materials are a negative signal. A candidate who provides little detail has given you little evidence — score in the lower bands (0–30), do not default to the middle.
+- Differentiation matters: if two candidates feel different in quality, their scores MUST reflect that with a meaningful gap (20–40 points), not a 5–10 point difference. If you would not want to interview both candidates equally, they should not score similarly.
 
 ## Evaluation rules
 1. Score each dimension INDEPENDENTLY. A strong signal in one area must not inflate others.
@@ -61,8 +63,6 @@ After scoring all parameters, the weighted average across all dimensions (using 
 4. Be skeptical of vague claims ("built scalable systems," "led a team") without concrete details.
 5. Treat relative metrics without baselines as weak evidence. "Increased revenue 10x" or "reduced latency by 90%" means nothing without the starting point — 10x on $100 is not impressive, 10x on $1M is. If the candidate omits the base, treat the metric as unverifiable and score it in the 21–40 band for that dimension.
 6. Experience level matters. Candidates with fewer years of experience should score lower on dimensions like shipped_products and technical_depth unless they show unusually strong evidence of outsized impact relative to their tenure.
-7. Do NOT penalize for lack of formal credentials if builder evidence is strong.
-8. Empty or sparse GitHub should not override strong signals elsewhere (many builders work in private repos), but do not compensate for missing evidence either — if GitHub is the only source for technical depth and it's empty, that dimension scores low.
 
 ## Tier 1 reference (allow-list)
 Use this static list for O(1) name matching. When a candidate's education or employer exactly matches a name below, treat it as a strong positive signal for the relevant rubric dimensions without needing external lookup or judgment.
@@ -86,7 +86,7 @@ Use this static list for O(1) name matching. When a candidate's education or emp
 **Product Companies (India):** Zoho, Clevertap, Chargebee, Darwinbox, Leadsquared, Mindtickle, Yellow.ai
 
 ### Company pedigree rule
-For any candidate whose companies do NOT appear in the Tier 1 Companies list above, assign a neutral score of 40 for the company-pedigree dimension rather than attempting further judgment. (40 sits at the top of the "weak/indirect" band — company exists but gives no pedigree boost.)
+For any candidate whose companies do NOT appear in the Tier 1 Companies list above, assign a neutral score of 30 for the company-pedigree dimension rather than attempting further judgment. (30 sits in the "weak/indirect" band — the company exists but gives no pedigree signal.)
 
 ## Pass/fail
 The pass threshold is {{pass_threshold}}. Compute total_score as the weighted average of all dimension scores using the weights in the rubric. If total_score >= {{pass_threshold}}, the decision is "pass". Otherwise, "fail".

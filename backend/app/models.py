@@ -222,7 +222,7 @@ DEFAULT_RUBRIC: list[dict] = [
             "institutions and companies (per the allow-list in the scoring prompt) are positive "
             "signals. However, a strong builder from an unknown school or company should never be "
             "heavily penalized — this dimension is context, not a filter. Apply the company pedigree "
-            "rule: non-Tier-1 companies get a neutral 40."
+            "rule: non-Tier-1 companies get a neutral 30."
         ),
         "weight": 10,
     },
