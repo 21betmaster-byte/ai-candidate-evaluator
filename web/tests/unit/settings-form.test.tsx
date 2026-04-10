@@ -53,6 +53,7 @@ function makeSettings(overrides: Partial<SettingsModel> = {}): SettingsModel {
     },
     pass_next_steps_text: "Reply with times.",
     reminder_hours: 48,
+    incomplete_expiry_days: 7,
     company_name: "Curator",
     ...overrides,
   };

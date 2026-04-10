@@ -66,6 +66,7 @@ export function makeSettings(overrides: Partial<SettingsModel> = {}): SettingsMo
     },
     pass_next_steps_text: "Reply with times that work for a 30-min call.",
     reminder_hours: 48,
+    incomplete_expiry_days: 7,
     company_name: "Curator",
     ...overrides,
   };
