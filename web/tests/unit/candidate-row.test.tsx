@@ -25,12 +25,11 @@ function makeRow(overrides: Partial<Row> = {}): Row {
 }
 
 describe("CandidateRow — happy path", () => {
-  it("renders name, email, and score on the 0–9.9 scale", () => {
+  it("renders name, email, and score on the 0–100 scale", () => {
     render(<CandidateRow row={makeRow()} />);
     expect(screen.getByText("Alice Jones")).toBeInTheDocument();
     expect(screen.getByText("alice@example.com")).toBeInTheDocument();
-    // 94.2 / 10 = 9.4
-    expect(screen.getByText("9.4")).toBeInTheDocument();
+    expect(screen.getByText("94")).toBeInTheDocument();
     expect(screen.getByText(/manual review/i)).toBeInTheDocument();
   });
 
@@ -78,9 +77,9 @@ describe("CandidateRow — edge cases", () => {
     expect(screen.getByText("Łukasz 日本語")).toBeInTheDocument();
   });
 
-  it("renders a score of exactly 0 as 0.0", () => {
+  it("renders a score of exactly 0 as 0", () => {
     render(<CandidateRow row={makeRow({ overall_score: 0 })} />);
-    expect(screen.getByText("0.0")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 });
 

@@ -41,6 +41,7 @@ def _base_payload() -> dict:
         },
         "pass_next_steps_text": "Reply with times that work.",
         "reminder_hours": 48,
+        "incomplete_expiry_days": 7,
         "company_name": "Curator Test",
     }
 

@@ -38,6 +38,7 @@ def _valid_settings(**overrides):
         tier_thresholds=DEFAULT_THRESHOLDS,
         pass_next_steps_text="Reply with times.",
         reminder_hours=48,
+        incomplete_expiry_days=7,
         company_name="Curator",
     )
     base.update(overrides)
