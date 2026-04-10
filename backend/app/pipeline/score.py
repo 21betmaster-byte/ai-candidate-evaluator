@@ -123,7 +123,7 @@ def score_candidate(profile: dict, rubric: list[dict], pass_threshold: int = 50)
         f"{json.dumps(profile, indent=2)[:14000]}\n\n"
         "Score every dimension above. Return JSON only."
     )
-    llm_result = call_opus(system, user, max_tokens=2500)
+    llm_result = call_opus(system, user, max_tokens=4096)
     try:
         parsed = parse_json_block(llm_result.text)
     except Exception:

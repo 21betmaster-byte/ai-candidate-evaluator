@@ -315,65 +315,20 @@ def handle_ingest_email(db: Session, job: Job) -> None:
 
     _log_step(db, cand.id, "ingest", "email ingested", meta={"message_id": message_id, "duplicate": is_duplicate})
 
-    # Re-apply guard: if this candidate is already flagged for human intake review,
-    # don't restart the pipeline or send another acknowledgment. The new inbound
-    # is already logged above; the hiring manager will see it in email history.
-    if (
-        existing_cand is not None
-        and existing_cand.status == "manual_review"
-        and existing_cand.review_source == "intake_review"
-    ):
-        _log_step(
-            db, cand.id, "ingest",
-            "follow-up on intake_review candidate — no new pipeline run",
-            meta={"message_id": message_id},
-        )
-        gmail.mark_processed(message_id)
-        return
-
-    # Sonnet flagged this as a contextual application that doesn't fit the
-    # standard checklist. Hand off to a human instead of running the pipeline
-    # or looping missing_items reminders. Threshold gates the noisy long tail.
+    # Sonnet flagged this as a contextual application — log the flag but
+    # continue through the normal pipeline instead of halting for manual review.
     if (
         category == "application_needs_review"
         and cls.get("confidence", 0) >= get_settings().caveat_confidence_threshold
     ):
-        # Still parse resume + extract URLs so the hiring manager sees whatever
-        # the candidate did send on the detail page. Best-effort — failures here
-        # must not block the handoff.
-        try:
-            parsed = parse_resume(email.attachments)
-        except Exception as e:
-            parsed = None
-            log_event(db, cand.id if cand else None, "parse_resume", "best-effort resume parse failed during intake review", level="warn", meta={
-                "reason": str(e)[:300],
-            })
-        ev = _new_evaluation(db, cand, source_message_id=message_id)
-        if parsed is not None:
-            ev.raw_resume_text = parsed.text or None
-            ev.resume_filename = parsed.selected_filename
-            body_urls = find_urls(strip_quoted_text(email.body_text or ""))
-            all_urls = list({*body_urls, *parsed.urls})
-            github_url, portfolio_url, _ = classify_urls(all_urls)
-            ev.github_url = github_url
-            ev.portfolio_url = portfolio_url
-        db.add(ev)
-
-        cand.status = "manual_review"
-        cand.review_source = "intake_review"
-        cand.review_reason = (cls.get("review_reason") or "")[:500] or None
-        db.add(cand)
-
-        _enqueue_send_template(db, cand.id, "caveat_acknowledgment", {
-            "name": email.sender_name, "to": email.sender_email,
-        })
         _log_step(
             db, cand.id, "intake_review",
-            f"flagged for human review: {cand.review_reason or '(no reason)'}",
-            meta={"confidence": cls.get("confidence", 0)},
+            f"Sonnet flagged as contextual — proceeding through pipeline anyway: {(cls.get('review_reason') or '(no reason)')[:200]}",
+            level="warn",
+            meta={"confidence": cls.get("confidence", 0), "reason": (cls.get("review_reason") or "")[:300]},
         )
-        gmail.mark_processed(message_id)
-        return
+        # Fall through to normal application processing below
+        category = "application"
 
     # Empty body and no attachments → empty_email template (handled by classifier as gibberish, but be safe)
     if not (email.body_text or "").strip() and not email.attachments:
@@ -927,7 +882,7 @@ def handle_decide(db: Session, job: Job) -> None:
     if not cand:
         raise ValueError(f"decide: candidate {ev.candidate_id} not found (job {job.id})")
     settings = _settings_row(db)
-    thresholds = settings.tier_thresholds or {"auto_fail_ceiling": 49, "manual_review_ceiling": 69, "auto_pass_floor": 70}
+    thresholds = settings.tier_thresholds or DEFAULT_THRESHOLDS
     tier = decide_tier(ev.overall_score or 0.0, thresholds)
     ev.tier = tier
     db.add(ev)
