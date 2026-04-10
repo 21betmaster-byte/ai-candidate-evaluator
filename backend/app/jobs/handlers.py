@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import SessionLocal
 from app.gmail import client as gmail
-from app.gmail.client import InboundEmail, Attachment
+from app.gmail.client import InboundEmail, Attachment, strip_quoted_text
 from app.jobs import queue
 from app.logging_setup import log_event, log_step
 from app.models import (
@@ -251,6 +251,27 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         gmail.mark_processed(message_id)
         return
 
+    # Override classification for known candidates who reply with updates.
+    # A short reply like "here's my portfolio: URL" may be classified as
+    # "question" or "other", but if the sender is a known incomplete/auto_fail
+    # candidate and the reply contains new URLs or attachments, treat it as an
+    # application update so the pipeline re-runs with the new data.
+    if category in ("question", "other"):
+        _existing_for_override = db.query(Candidate).filter(
+            Candidate.email == email.sender_email
+        ).first()
+        if (
+            _existing_for_override is not None
+            and _existing_for_override.status in ("incomplete", "auto_fail")
+        ):
+            _stripped = strip_quoted_text(email.body_text or "")
+            _reply_urls = find_urls(_stripped)
+            if _reply_urls or email.attachments:
+                log_event(db, _existing_for_override.id, "classify.override",
+                    f"overriding {category} → application for known {_existing_for_override.status} candidate",
+                    meta={"original_category": category, "url_count": len(_reply_urls)})
+                category = "application"
+
     if category == "question":
         _log_inbound(db, email, None, "question")
         _enqueue_send_template(db, None, "question_response", {
@@ -285,6 +306,8 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     _adopt_orphan_logs(db, message_id, cand.id)
     _log_inbound(db, email, cand, "application")
     cand.last_inbound_message_id = email.message_id
+    cand.gmail_thread_id = email.thread_id or cand.gmail_thread_id
+    cand.rfc822_message_id = email.rfc822_message_id or cand.rfc822_message_id
     db.add(cand)
 
     _log_step(db, cand.id, "ingest", "email ingested", meta={"message_id": message_id, "duplicate": is_duplicate})
@@ -323,7 +346,7 @@ def handle_ingest_email(db: Session, job: Job) -> None:
         if parsed is not None:
             ev.raw_resume_text = parsed.text or None
             ev.resume_filename = parsed.selected_filename
-            body_urls = find_urls(email.body_text or "")
+            body_urls = find_urls(strip_quoted_text(email.body_text or ""))
             all_urls = list({*body_urls, *parsed.urls})
             github_url, portfolio_url, _ = classify_urls(all_urls)
             ev.github_url = github_url
@@ -385,8 +408,9 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     ev.raw_resume_text = parsed.text or None
     ev.resume_filename = parsed.selected_filename
 
-    # Aggregate URLs from email body + resume
-    body_urls = find_urls(email.body_text or "")
+    # Aggregate URLs from email body (stripped of quoted reply text) + resume
+    stripped_body = strip_quoted_text(email.body_text or "")
+    body_urls = find_urls(stripped_body)
     all_urls = list({*body_urls, *parsed.urls})
     github_url, portfolio_url, linkedin_url = classify_urls(all_urls)
     ev.github_url = github_url
@@ -429,12 +453,11 @@ def handle_ingest_email(db: Session, job: Job) -> None:
     db.add(ev)
     db.flush()
 
-    # Send acknowledgment for any application-shaped email (complete OR incomplete)
-    _enqueue_send_template(db, cand.id, "acknowledgment", {"name": email.sender_name, "to": email.sender_email})
-
-    # Duplicate notice (replaces normal ack? PRD says it's a separate "got your update" email)
-    if is_duplicate:
-        _enqueue_send_template(db, cand.id, "duplicate_update", {"name": email.sender_name, "to": email.sender_email})
+    # Send acknowledgment only for first-time applications.
+    # Re-applications / replies are processed silently — the pipeline will send
+    # the appropriate next email (decision, missing_items, etc.).
+    if not is_duplicate:
+        _enqueue_send_template(db, cand.id, "acknowledgment", {"name": email.sender_name, "to": email.sender_email})
 
     # Decide routing based on which URLs are present. The missing_items email
     # is deferred until AFTER fetch_github / fetch_portfolio run so the system
@@ -942,14 +965,20 @@ def handle_send_template_email(db: Session, job: Job) -> None:
     payload = job.payload or {}
     template_key = payload["template"]
     to = payload.get("to")
-    if not to and job.candidate_id:
+    thread_id: str | None = None
+    in_reply_to: str | None = None
+    if job.candidate_id:
         cand = db.get(Candidate, job.candidate_id)
-        to = cand.email if cand else None
+        if cand:
+            if not to:
+                to = cand.email
+            thread_id = cand.gmail_thread_id
+            in_reply_to = cand.rfc822_message_id
     if not to:
         raise ValueError(f"send_template_email missing 'to' (template={template_key})")
     settings = _settings_row(db)
     rendered = _render_template(template_key, payload, settings.company_name)
-    msg_id = gmail.send_email(to=to, body_text=rendered.body)
+    msg_id = gmail.send_email(to=to, body_text=rendered.body, in_reply_to=in_reply_to, thread_id=thread_id)
     db.add(EmailLog(
         candidate_id=job.candidate_id,
         gmail_message_id=msg_id,
@@ -983,7 +1012,10 @@ def handle_send_reminder(db: Session, job: Job) -> None:
     missing = payload.get("missing") or cand.missing_items or []
     settings = _settings_row(db)
     rendered = tpl.reminder(cand.name, missing, settings.company_name)
-    msg_id = gmail.send_email(to=cand.email, body_text=rendered.body)
+    msg_id = gmail.send_email(
+        to=cand.email, body_text=rendered.body,
+        in_reply_to=cand.rfc822_message_id, thread_id=cand.gmail_thread_id,
+    )
     db.add(EmailLog(
         candidate_id=cand.id,
         gmail_message_id=msg_id,

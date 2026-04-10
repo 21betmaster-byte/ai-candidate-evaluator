@@ -53,6 +53,8 @@ class Candidate(Base):
     review_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
     review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_inbound_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    gmail_thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    rfc822_message_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import app.jobs.handlers as handlers_mod
 from app.models import Candidate, EmailLog, Evaluation, Job, ProcessingLog
-from tests.conftest import _FakeGitHubData, _FakePortfolioData, fake_parse_resume_factory
+from tests.conftest import _FakeGitHubData, _FakePortfolioData, _fake_score, fake_parse_resume_factory
 
 
 # ---------------------- helpers ----------------------
@@ -284,7 +284,7 @@ def test_e2e_duplicate_application_supersedes_old_evaluation(
     assert evs[0].superseded is True
     assert evs[1].superseded is False
     assert cand.current_evaluation_id == evs[1].id
-    assert "duplicate_update" in _outbound_templates(db)
+    assert "duplicate_update" not in _outbound_templates(db)
 
 
 # ==================== P0: GitHub 404 (candidate-side error) ====================
@@ -569,8 +569,8 @@ def test_duplicate_resume_then_links_merges_into_complete_application(
     # Pipeline ran to completion against the merged data
     assert cand.status in ("auto_pass", "auto_fail", "manual_review")
     assert new_ev.tier is not None
-    # And the candidate got the duplicate-update notice
-    assert "duplicate_update" in _outbound_templates(db)
+    # No duplicate-update or acknowledgment for re-applications
+    assert "duplicate_update" not in _outbound_templates(db)
 
 
 def test_duplicate_full_resend_overwrites_all_fields(
@@ -614,7 +614,7 @@ def test_duplicate_full_resend_overwrites_all_fields(
     # The prior evaluation must be marked superseded so it's not shown as current
     db.refresh(old_ev)
     assert old_ev.superseded is True
-    assert "duplicate_update" in _outbound_templates(db)
+    assert "duplicate_update" not in _outbound_templates(db)
 
 
 def test_duplicate_partial_resend_only_overrides_provided_field(
@@ -687,3 +687,494 @@ def test_duplicate_merge_logged_with_merged_fields(
     ]
     assert merge_logs, "expected an ingest log entry recording the merge"
     assert "resume" in merge_logs[-1].meta.get("merged", [])
+
+
+# ==================== Regression: quoted-text URL extraction ====================
+#
+# Bugs 2 & 3: replies include the entire conversation history in body_text.
+# The system was extracting URLs from quoted text (old portfolio links) instead
+# of the new ones the candidate intended. These tests ensure strip_quoted_text
+# is applied so only URLs from the *new* portion of the reply are used.
+
+
+def test_reply_with_quoted_old_url_uses_new_url_only(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """Candidate applies with resume only (incomplete), then replies with a new
+    portfolio link. The quoted text contains an old URL from the system email.
+    The pipeline must use the NEW URL from the fresh reply text, not the OLD
+    one from the quoted section."""
+    import app.jobs.handlers as h
+
+    # First email: resume only, no URLs → incomplete
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="qt-1a", sender_email="quoted@example.com", sender_name="Quoted",
+        body="Here is my application",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "quoted@example.com").one()
+    assert cand.status == "incomplete"
+
+    # Reply whose body includes the new links at the top and an old URL inside
+    # a quoted "On DATE, NAME wrote:" block.
+    reply_body = (
+        "Here are my links: https://github.com/quoted  https://new-portfolio.dev\n"
+        "\n"
+        "On Tue, Apr 8, 2026 at 10:00 AM Plum <hiring@plum.com> wrote:\n"
+        "> Thanks for applying. We noticed some items are missing.\n"
+        "> Check out https://old-portfolio.dev for reference.\n"
+    )
+    monkeypatch.setattr(h, "parse_resume", fake_parse_resume_factory(text=""))
+    gmail_fake.deliver(make_inbound(
+        "qt-1b", "quoted@example.com", "Quoted", "Re: Application",
+        reply_body,
+        attachments=[],
+    ))
+    enqueue_ingest("qt-1b")
+    run_pipeline()
+
+    db.expire_all()
+    cand = db.query(Candidate).filter(Candidate.email == "quoted@example.com").one()
+    new_ev = db.get(Evaluation, cand.current_evaluation_id)
+    # The new evaluation must use the NEW portfolio URL, not the old one.
+    assert "new-portfolio.dev" in new_ev.portfolio_url
+    assert "old-portfolio.dev" not in (new_ev.portfolio_url or "")
+
+
+def test_reply_with_angle_bracket_quoting_strips_old_urls(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """Standard '>' quoting should be stripped so old URLs are not extracted."""
+    import app.jobs.handlers as h
+
+    # First email: resume only → incomplete
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="ab-1a", sender_email="angle@example.com", sender_name="Angle",
+        body="Here is my application",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "angle@example.com").one()
+    assert cand.status == "incomplete"
+
+    # Reply with new links + '>' quoted old URL.
+    reply_body = (
+        "Updated links: https://github.com/angle  https://fixed.dev\n"
+        "\n"
+        "> On Apr 8, 2026, Plum wrote:\n"
+        "> Please provide a working portfolio link.\n"
+        "> The link https://broken.dev did not load.\n"
+    )
+    monkeypatch.setattr(h, "parse_resume", fake_parse_resume_factory(text=""))
+    gmail_fake.deliver(make_inbound(
+        "ab-1b", "angle@example.com", "Angle", "Re: Application",
+        reply_body,
+        attachments=[],
+    ))
+    enqueue_ingest("ab-1b")
+    run_pipeline()
+
+    db.expire_all()
+    cand = db.query(Candidate).filter(Candidate.email == "angle@example.com").one()
+    new_ev = db.get(Evaluation, cand.current_evaluation_id)
+    assert "fixed.dev" in new_ev.portfolio_url
+    assert "broken.dev" not in (new_ev.portfolio_url or "")
+
+
+# ==================== Regression: classification override for replies ====================
+#
+# Bug 3 continuation: a short reply like "here's my portfolio: URL" from a
+# known incomplete candidate was classified as "question" or "other", causing
+# the pipeline to never run with the new data. The override forces
+# reclassification to "application" when an incomplete/auto_fail candidate
+# sends URLs.
+
+
+def test_short_reply_from_incomplete_candidate_reclassified_as_application(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """A known incomplete candidate sends a short reply with a portfolio link.
+    The classifier returns 'other' but the override should reclassify it as
+    'application' and run the full pipeline."""
+    import app.jobs.handlers as h
+
+    # First email: application with resume only → incomplete (no github/portfolio)
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="ovr-1a", sender_email="override@example.com", sender_name="Override",
+        body="Here is my application",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "override@example.com").one()
+    assert cand.status == "incomplete"
+
+    # Short reply with just a couple of URLs. The fake classifier will return
+    # "other" because the body doesn't match any application keywords.
+    # The override should kick in because the candidate is "incomplete" + has URLs.
+    gmail_fake.deliver(make_inbound(
+        "ovr-1b", "override@example.com", "Override", "Re: Missing items",
+        "https://github.com/override  https://override.dev",
+        attachments=[],
+    ))
+    enqueue_ingest("ovr-1b")
+    run_pipeline()
+
+    db.expire_all()
+    cand = db.query(Candidate).filter(Candidate.email == "override@example.com").one()
+    # Should have progressed past "incomplete" — the pipeline re-ran
+    assert cand.status != "incomplete", (
+        f"expected pipeline to re-run and change status from 'incomplete', got '{cand.status}'"
+    )
+    new_ev = db.get(Evaluation, cand.current_evaluation_id)
+    assert new_ev.github_url and "override" in new_ev.github_url
+    assert new_ev.portfolio_url and "override.dev" in new_ev.portfolio_url
+
+    # The classify.override log should exist
+    override_logs = [
+        l for l in _logs(db, cand.id)
+        if l.step == "classify.override"
+    ]
+    assert override_logs, "expected a classify.override log entry"
+
+
+def test_short_reply_from_auto_fail_candidate_reclassified_as_application(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """A candidate whose prior application was auto-rejected sends a new email
+    with correct details. Even if classified as 'other', the override should
+    kick in and re-run the pipeline."""
+    import app.jobs.handlers as h
+
+    # First email: full application that scores low → auto_fail
+    low_scorer = lambda profile, rubric: {
+        "scores": {
+            "technical_depth": {"score": 20, "reasoning": "weak"},
+            "shipped_products": {"score": 15, "reasoning": "none"},
+            "business_thinking": {"score": 10, "reasoning": "none"},
+            "speed_of_execution": {"score": 12, "reasoning": "none"},
+        },
+        "overall_score": 15.0,
+        "decision_reason": "Does not meet threshold.",
+        "_llm_meta": {"llm_model": "test", "llm_input_tokens": 0, "llm_output_tokens": 0,
+                      "llm_cache_read_tokens": 0, "llm_cache_creation_tokens": 0, "llm_duration_ms": 0},
+        "_clamped_dimensions": [],
+    }
+    monkeypatch.setattr(h, "score_candidate", low_scorer)
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="af-1a", sender_email="autofail@example.com", sender_name="AutoFail",
+        body="https://github.com/autofail  https://autofail.dev",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "autofail@example.com").one()
+    assert cand.status == "auto_fail"
+
+    # Second email: the candidate sends new links. Body doesn't match
+    # application keywords, so the classifier returns "other".
+    monkeypatch.setattr(h, "score_candidate", _fake_score)  # restore good scorer
+    gmail_fake.deliver(make_inbound(
+        "af-1b", "autofail@example.com", "AutoFail", "Re: Application",
+        "https://github.com/autofail-v2  https://autofail-v2.dev",
+        attachments=[],
+    ))
+    enqueue_ingest("af-1b")
+    run_pipeline()
+
+    db.expire_all()
+    cand = db.query(Candidate).filter(Candidate.email == "autofail@example.com").one()
+    assert cand.status != "auto_fail", (
+        f"expected pipeline re-run to change status from 'auto_fail', got '{cand.status}'"
+    )
+    new_ev = db.get(Evaluation, cand.current_evaluation_id)
+    assert "autofail-v2" in (new_ev.github_url or "")
+    assert "autofail-v2.dev" in (new_ev.portfolio_url or "")
+
+
+def test_question_from_new_sender_not_overridden(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, enqueue_ingest, run_pipeline
+):
+    """A genuine question from a brand-new sender must NOT be reclassified as
+    'application'. The override should only apply to known candidates."""
+    # Send a question-like email from a brand-new sender.
+    # The fake classifier returns "question" when body ends with "?" and contains "salary".
+    gmail_fake.deliver(make_inbound(
+        "q-new-1", "newperson@example.com", "New Person", "Quick question",
+        "What is the salary range?",
+        attachments=[],
+    ))
+    enqueue_ingest("q-new-1")
+    run_pipeline()
+
+    # Should be treated as a question — no candidate created, question_response sent.
+    cand = db.query(Candidate).filter(Candidate.email == "newperson@example.com").first()
+    assert cand is None, "a genuine question from a new sender should not create a candidate"
+    templates = _outbound_templates(db)
+    assert "question_response" in templates
+
+
+def test_question_from_passed_candidate_not_overridden(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """A question from a candidate who already passed should NOT be reclassified.
+    The override only triggers for 'incomplete' or 'auto_fail' status."""
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="pass-q-1a", sender_email="passed@example.com", sender_name="Passed",
+        body="https://github.com/passed  https://passed.dev",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "passed@example.com").one()
+    assert cand.status == "auto_pass"
+
+    # Now they send a question — should stay as question, not be overridden.
+    # The fake classifier returns "question" when body ends with "?" and contains "salary".
+    gmail_fake.deliver(make_inbound(
+        "pass-q-1b", "passed@example.com", "Passed", "Quick question",
+        "What is the salary range?",
+        attachments=[],
+    ))
+    enqueue_ingest("pass-q-1b")
+    run_pipeline()
+
+    templates = _outbound_templates(db)
+    assert "question_response" in templates
+    # The classify.override log should NOT exist for this candidate
+    override_logs = [
+        l for l in _logs(db, cand.id)
+        if l.step == "classify.override"
+    ]
+    assert not override_logs, "should not override classification for auto_pass candidates"
+
+
+# ==================== Regression: email threading ====================
+#
+# Bug 4: outbound emails were not sent as replies to the original thread.
+# These tests verify that send_email is called with the correct thread_id
+# and in_reply_to from the candidate's inbound email.
+
+
+def test_outbound_emails_include_thread_id_and_in_reply_to(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """All outbound emails for a candidate must include the Gmail thread_id
+    and the RFC 822 Message-ID from the candidate's inbound email."""
+    from app.gmail.client import InboundEmail
+
+    rfc_msg_id = "<abc123@mail.gmail.com>"
+    email = InboundEmail(
+        message_id="thr-1",
+        thread_id="thread-abc",
+        sender="Thread <thread@example.com>",
+        sender_email="thread@example.com",
+        sender_name="Thread",
+        subject="Application",
+        body_text="https://github.com/thread  https://thread.dev",
+        rfc822_message_id=rfc_msg_id,
+        attachments=[pdf_attachment()],
+        label_ids=[],
+    )
+    gmail_fake.deliver(email)
+    enqueue_ingest("thr-1")
+    run_pipeline()
+
+    # Every outbound email should carry the thread_id and in_reply_to
+    assert len(gmail_fake.sent) > 0, "expected at least one outbound email"
+    for sent_msg in gmail_fake.sent:
+        assert sent_msg["thread_id"] == "thread-abc", (
+            f"outbound email missing thread_id: {sent_msg}"
+        )
+        assert sent_msg["in_reply_to"] == rfc_msg_id, (
+            f"outbound email missing in_reply_to: {sent_msg}"
+        )
+
+
+def test_thread_id_persisted_on_candidate(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """The gmail_thread_id and rfc822_message_id must be stored on the
+    candidate record for use by all subsequent outbound emails."""
+    from app.gmail.client import InboundEmail
+
+    email = InboundEmail(
+        message_id="persist-1",
+        thread_id="thread-persist",
+        sender="Persist <persist@example.com>",
+        sender_email="persist@example.com",
+        sender_name="Persist",
+        subject="Application",
+        body_text="https://github.com/persist  https://persist.dev",
+        rfc822_message_id="<persist@mail.gmail.com>",
+        attachments=[pdf_attachment()],
+        label_ids=[],
+    )
+    gmail_fake.deliver(email)
+    enqueue_ingest("persist-1")
+    run_pipeline()
+
+    cand = db.query(Candidate).filter(Candidate.email == "persist@example.com").one()
+    assert cand.gmail_thread_id == "thread-persist"
+    assert cand.rfc822_message_id == "<persist@mail.gmail.com>"
+
+
+# ==================== Regression: duplicate acknowledgement emails ====================
+#
+# Bug 5: re-applications were getting both "acknowledgment" and
+# "duplicate_update" emails. Now neither should be sent for re-applications.
+
+
+def test_first_application_gets_exactly_one_acknowledgment(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """A first-time application must receive exactly one acknowledgment email."""
+    gmail_fake.deliver(make_inbound(
+        "ack-1", "firsttime@example.com", "First", "Application",
+        "https://github.com/first  https://first.dev",
+        attachments=[pdf_attachment()],
+    ))
+    enqueue_ingest("ack-1")
+    run_pipeline()
+
+    ack_count = sum(1 for t in _outbound_templates(db) if t == "acknowledgment")
+    assert ack_count == 1, f"expected exactly 1 acknowledgment, got {ack_count}"
+
+
+def test_reapplication_gets_no_acknowledgment_or_duplicate_update(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """A re-application must NOT produce any acknowledgment or duplicate_update
+    email. The pipeline processes silently and sends only the decision/missing
+    items email as appropriate."""
+    # First application
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="noack-1a", sender_email="noack@example.com", sender_name="NoAck",
+        body="https://github.com/noack  https://noack.dev",
+        attachments=[pdf_attachment()],
+    )
+    # Count templates after first application
+    first_templates = list(_outbound_templates(db))
+    ack_count_before = sum(1 for t in first_templates if t == "acknowledgment")
+    dup_count_before = sum(1 for t in first_templates if t == "duplicate_update")
+    assert ack_count_before == 1  # first app gets one ack
+
+    # Second application
+    gmail_fake.deliver(make_inbound(
+        "noack-1b", "noack@example.com", "NoAck", "Updated application",
+        "Updated links: https://github.com/noack2  https://noack2.dev",
+        attachments=[pdf_attachment()],
+    ))
+    enqueue_ingest("noack-1b")
+    run_pipeline()
+
+    all_templates = _outbound_templates(db)
+    ack_count_after = sum(1 for t in all_templates if t == "acknowledgment")
+    dup_count_after = sum(1 for t in all_templates if t == "duplicate_update")
+
+    # Should still be exactly 1 acknowledgment (from the first email) and 0 duplicate_update
+    assert ack_count_after == 1, (
+        f"expected no additional acknowledgment for re-application, got {ack_count_after} total"
+    )
+    assert dup_count_after == 0, (
+        f"expected 0 duplicate_update emails, got {dup_count_after}"
+    )
+
+
+def test_reply_to_missing_items_gets_no_acknowledgment(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline
+):
+    """When a candidate replies to a missing_items email with the required
+    links, they should NOT receive any acknowledgment — only the pipeline
+    result email (decision or further missing items)."""
+    import app.jobs.handlers as h
+
+    # First email: resume only → incomplete
+    _setup_candidate_with(
+        monkeypatch=monkeypatch, db=db, gmail_fake=gmail_fake, make_inbound=make_inbound,
+        pdf_attachment=pdf_attachment, enqueue_ingest=enqueue_ingest, run_pipeline=run_pipeline,
+        message_id="mi-reply-1a", sender_email="mireply@example.com", sender_name="MiReply",
+        body="Here is my application",
+        attachments=[pdf_attachment()],
+    )
+    cand = db.query(Candidate).filter(Candidate.email == "mireply@example.com").one()
+    assert cand.status == "incomplete"
+    templates_before = list(_outbound_templates(db))
+
+    # Reply with the missing links
+    monkeypatch.setattr(h, "parse_resume", fake_parse_resume_factory(text=""))
+    gmail_fake.deliver(make_inbound(
+        "mi-reply-1b", "mireply@example.com", "MiReply", "Re: Missing items",
+        "Here are my links: https://github.com/mireply  https://mireply.dev",
+        attachments=[],
+    ))
+    enqueue_ingest("mi-reply-1b")
+    run_pipeline()
+
+    all_templates = _outbound_templates(db)
+    # Count new acknowledgments and duplicate_updates added by the reply
+    new_acks = sum(1 for t in all_templates if t == "acknowledgment") - sum(1 for t in templates_before if t == "acknowledgment")
+    new_dups = sum(1 for t in all_templates if t == "duplicate_update")
+
+    assert new_acks == 0, f"reply to missing_items should not trigger acknowledgment, got {new_acks} new"
+    assert new_dups == 0, f"reply to missing_items should not trigger duplicate_update, got {new_dups}"
+
+
+# ==================== Regression: logs grouped by candidate ====================
+#
+# Bug 1: logs were not sorted/grouped by candidate. The API now returns logs
+# grouped by candidate (most-recent-activity first, chronological within group).
+
+
+def test_logs_api_groups_by_candidate(
+    db, settings_row, monkeypatch, gmail_fake, make_inbound, pdf_attachment, enqueue_ingest, run_pipeline, client
+):
+    """The /api/logs endpoint must return logs grouped by candidate, with the
+    most recently active candidate's group first, and chronological order
+    within each group."""
+    # Process two candidates so their logs interleave in created_at
+    gmail_fake.deliver(make_inbound(
+        "log-a", "alice@example.com", "Alice", "Application",
+        "https://github.com/alice  https://alice.dev",
+        attachments=[pdf_attachment()],
+    ))
+    enqueue_ingest("log-a")
+    run_pipeline()
+
+    gmail_fake.deliver(make_inbound(
+        "log-b", "bob@example.com", "Bob", "Application",
+        "https://github.com/bob  https://bob.dev",
+        attachments=[pdf_attachment()],
+    ))
+    enqueue_ingest("log-b")
+    run_pipeline()
+
+    resp = client.get("/api/logs?limit=500")
+    assert resp.status_code == 200
+    logs = resp.json()
+    assert len(logs) > 0
+
+    # Extract the sequence of candidate_ids (including nulls for system logs)
+    cand_ids = [l.get("candidate_id") for l in logs]
+
+    # Verify grouping: once we leave a candidate's group, we should not return to it.
+    seen_groups: list[int | None] = []
+    for cid in cand_ids:
+        if not seen_groups or seen_groups[-1] != cid:
+            assert cid not in seen_groups, (
+                f"candidate_id {cid} appears in a non-contiguous block — logs are not grouped"
+            )
+            seen_groups.append(cid)
+
+    # Verify within-group chronological order
+    for cid in set(cand_ids):
+        group_logs = [l for l in logs if l.get("candidate_id") == cid]
+        timestamps = [l["created_at"] for l in group_logs]
+        assert timestamps == sorted(timestamps), (
+            f"logs for candidate {cid} are not in chronological order"
+        )

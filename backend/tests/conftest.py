@@ -154,6 +154,8 @@ class FakeGmail:
             "message_id": msg_id,
             "to": to,
             "body": body_text,
+            "in_reply_to": in_reply_to,
+            "thread_id": thread_id,
         })
         return msg_id
 

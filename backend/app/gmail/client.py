@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import email
 import logging
+import re
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from typing import Iterable
@@ -34,6 +35,7 @@ class InboundEmail:
     sender_name: str | None
     subject: str
     body_text: str
+    rfc822_message_id: str | None = None
     attachments: list["Attachment"] = field(default_factory=list)
     label_ids: list[str] = field(default_factory=list)
 
@@ -124,6 +126,7 @@ def _extract_email(service, message_id: str) -> InboundEmail:
         sender_name=sender_name,
         subject=subject,
         body_text="\n".join(body_parts).strip(),
+        rfc822_message_id=headers.get("message-id"),
         attachments=attachments,
         label_ids=msg.get("labelIds", []),
     )
@@ -177,6 +180,28 @@ def _ensure_label(service, name: str) -> str:
         body={"name": name, "labelListVisibility": "labelShow", "messageListVisibility": "show"},
     ).execute()
     return created["id"]
+
+
+def strip_quoted_text(body: str) -> str:
+    """Remove quoted reply text from an email body.
+
+    Strips common patterns: ``> `` quoted lines, Gmail-style
+    ``On DATE, NAME wrote:`` blocks, Outlook-style ``From: ... Sent: ...``
+    blocks, and forwarded-message dividers.  Returns only the new/original
+    portion of the message.
+    """
+    if not body:
+        return ""
+    # Gmail / Apple Mail: "On <date>, <name> wrote:"
+    body = re.split(r'\n\s*On .+wrote:\s*$', body, maxsplit=1, flags=re.MULTILINE)[0]
+    # Forwarded-message divider
+    body = re.split(r'\n-{5,}\s*Forwarded message\s*-{5,}', body, maxsplit=1)[0]
+    # Outlook style: "From: ... Sent: ... To: ..."
+    body = re.split(r'\nFrom:\s+.+\nSent:\s+', body, maxsplit=1)[0]
+    # Remove > quoted lines
+    lines = body.split('\n')
+    lines = [l for l in lines if not l.startswith('>')]
+    return '\n'.join(lines).strip()
 
 
 def send_email(to: str, body_text: str, in_reply_to: str | None = None, thread_id: str | None = None) -> str:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.auth import require_user
@@ -21,9 +22,20 @@ def list_logs(
     db: Session = Depends(get_db),
     user: str = Depends(require_user),
 ):
+    # Subquery: most-recent log timestamp per candidate (used to sort groups)
+    max_ts_sub = (
+        db.query(
+            ProcessingLog.candidate_id,
+            sa_func.max(ProcessingLog.created_at).label("max_ts"),
+        )
+        .group_by(ProcessingLog.candidate_id)
+        .subquery()
+    )
+
     q = (
         db.query(ProcessingLog, Candidate.name, Candidate.email)
         .outerjoin(Candidate, ProcessingLog.candidate_id == Candidate.id)
+        .outerjoin(max_ts_sub, ProcessingLog.candidate_id == max_ts_sub.c.candidate_id)
     )
     if step:
         q = q.filter(ProcessingLog.step == step)
@@ -32,8 +44,14 @@ def list_logs(
     if candidate_id is not None:
         q = q.filter(ProcessingLog.candidate_id == candidate_id)
 
+    # Group by candidate: newest-active candidate first, chronological within group.
+    # System logs (candidate_id IS NULL) sort to the end.
     rows = (
-        q.order_by(ProcessingLog.created_at.desc())
+        q.order_by(
+            max_ts_sub.c.max_ts.desc().nullslast(),
+            ProcessingLog.candidate_id,
+            ProcessingLog.created_at.asc(),
+        )
         .offset(offset)
         .limit(limit)
         .all()

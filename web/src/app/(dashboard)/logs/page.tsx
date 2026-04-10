@@ -99,9 +99,30 @@ export default async function LogsPage({
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-1 mt-2">
-              {logs.map((log) => (
-                <LogRow key={log.id} log={log} />
+            <div className="flex flex-col gap-0 mt-2">
+              {groupLogsByCandidate(logs).map((group) => (
+                <div key={group.key} className="mb-2">
+                  <div className="px-8 py-3 flex items-center gap-3 bg-surface-container rounded-xl">
+                    {group.candidateId ? (
+                      <Link
+                        href={`/candidates/${group.candidateId}`}
+                        className="text-primary hover:underline font-headline font-bold text-sm"
+                      >
+                        {group.candidateName || group.candidateEmail || `#${group.candidateId}`}
+                      </Link>
+                    ) : (
+                      <span className="font-headline font-bold text-sm opacity-40">System</span>
+                    )}
+                    <span className="text-[10px] opacity-40 font-bold uppercase">
+                      {group.logs.length} log{group.logs.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 mt-1">
+                    {group.logs.map((log) => (
+                      <LogRow key={log.id} log={log} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -130,6 +151,34 @@ export default async function LogsPage({
       </section>
     </>
   );
+}
+
+interface LogGroup {
+  key: string;
+  candidateId: number | null;
+  candidateName: string | null;
+  candidateEmail: string | null;
+  logs: LogEntryWithCandidate[];
+}
+
+function groupLogsByCandidate(logs: LogEntryWithCandidate[]): LogGroup[] {
+  const groups: LogGroup[] = [];
+  let current: LogGroup | null = null;
+  for (const log of logs) {
+    const id = log.candidate_id;
+    if (!current || current.candidateId !== id) {
+      current = {
+        key: id != null ? `c-${id}` : `sys-${groups.length}`,
+        candidateId: id,
+        candidateName: log.candidate_name,
+        candidateEmail: log.candidate_email,
+        logs: [],
+      };
+      groups.push(current);
+    }
+    current.logs.push(log);
+  }
+  return groups;
 }
 
 function buildUrl(params: Record<string, string | undefined>) {
@@ -260,20 +309,6 @@ function LogRow({ log }: { log: LogEntryWithCandidate }) {
       {/* Timestamp */}
       <span className="text-[11px] font-mono opacity-40 w-28 flex-shrink-0 pt-0.5">
         {date} {time}
-      </span>
-
-      {/* Candidate */}
-      <span className="w-36 flex-shrink-0 truncate">
-        {log.candidate_id ? (
-          <Link
-            href={`/candidates/${log.candidate_id}`}
-            className="text-primary hover:underline font-semibold"
-          >
-            {log.candidate_name || log.candidate_email || `#${log.candidate_id}`}
-          </Link>
-        ) : (
-          <span className="opacity-30 text-xs">system</span>
-        )}
       </span>
 
       {/* Step badge */}
