@@ -62,24 +62,26 @@ export default async function LogsPage({
       </header>
 
       {/* Filters */}
-      <section className="bg-surface-container-low rounded-[2rem] p-4">
-        <div className="px-8 py-6 flex flex-wrap justify-between items-end gap-4">
-          <div>
-            <h2 className="text-3xl font-headline font-extrabold tracking-tight">
-              Log Stream
-            </h2>
-            <p className="text-sm opacity-60 mt-1">Newest first</p>
+      <section className="bg-surface-container-low rounded-[2rem] p-4 overflow-hidden">
+        <div className="px-8 py-6 space-y-4">
+          <div className="flex flex-wrap justify-between items-end gap-4">
+            <div>
+              <h2 className="text-3xl font-headline font-extrabold tracking-tight">
+                Log Stream
+              </h2>
+              <p className="text-sm opacity-60 mt-1">Newest first</p>
+            </div>
+            <div className="flex gap-3 flex-wrap items-center">
+              <EmailSearchInput
+                currentEmail={sp.email ?? ""}
+                currentParams={{ level: sp.level ?? "", step: sp.step ?? "" }}
+              />
+              <LevelTabs current={sp.level ?? ""} currentStep={sp.step ?? ""} currentEmail={sp.email ?? ""} />
+            </div>
           </div>
-          <div className="flex gap-3 flex-wrap items-center">
-            <EmailSearchInput
-              currentEmail={sp.email ?? ""}
-              currentParams={{ level: sp.level ?? "", step: sp.step ?? "" }}
-            />
-            <LevelTabs current={sp.level ?? ""} currentStep={sp.step ?? ""} currentEmail={sp.email ?? ""} />
-            {steps.length > 0 && (
-              <StepFilter current={sp.step ?? ""} currentLevel={sp.level ?? ""} currentEmail={sp.email ?? ""} steps={steps} />
-            )}
-          </div>
+          {steps.length > 0 && (
+            <StepFilter current={sp.step ?? ""} currentLevel={sp.level ?? ""} currentEmail={sp.email ?? ""} steps={steps} />
+          )}
         </div>
 
         {error ? (
@@ -110,7 +112,9 @@ export default async function LogsPage({
                         {group.candidateName || group.candidateEmail || `#${group.candidateId}`}
                       </Link>
                     ) : (
-                      <span className="font-headline font-bold text-sm opacity-40">System</span>
+                      <span className="font-headline font-bold text-sm opacity-40">
+                        {group.candidateEmail || "System"}
+                      </span>
                     )}
                     <span className="text-[10px] opacity-40 font-bold uppercase">
                       {group.logs.length} log{group.logs.length !== 1 ? "s" : ""}
@@ -228,7 +232,7 @@ function StepFilter({
   steps: string[];
 }) {
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-2 items-center flex-wrap">
       <span className="text-xs opacity-40 font-bold uppercase">Step:</span>
       <Link
         href={buildUrl({ level: currentLevel || undefined, email: currentEmail || undefined })}
@@ -278,29 +282,29 @@ function LogRow({ log }: { log: LogEntryWithCandidate }) {
 
   return (
     <div
-      className={`px-8 py-3 flex items-start gap-4 text-sm rounded-xl hover:bg-surface-container-lowest/60 transition-colors ${levelBg}`}
+      className={`px-8 py-3 flex items-start gap-4 text-sm rounded-xl hover:bg-surface-container-lowest/60 transition-colors min-w-0 ${levelBg}`}
     >
       {/* Timestamp */}
-      <span className="text-[11px] font-mono opacity-40 w-28 flex-shrink-0 pt-0.5">
+      <span className="text-[11px] font-mono opacity-40 w-24 shrink-0 pt-0.5">
         {date} {time}
       </span>
 
       {/* Step badge */}
-      <span className="text-[10px] uppercase font-bold opacity-60 bg-surface-container px-2 py-0.5 rounded-md w-40 flex-shrink-0 truncate">
+      <span className="text-[10px] uppercase font-bold opacity-60 bg-surface-container px-2 py-0.5 rounded-md w-36 shrink-0 truncate">
         {log.step}
       </span>
 
       {/* Level */}
-      <span className={`text-[10px] uppercase font-black w-12 flex-shrink-0 ${levelColor}`}>
+      <span className={`text-[10px] uppercase font-black w-10 shrink-0 ${levelColor}`}>
         {log.level}
       </span>
 
       {/* Message */}
-      <span className={`flex-1 ${levelColor}`}>{log.message}</span>
+      <span className={`flex-1 min-w-0 break-words ${levelColor}`}>{log.message}</span>
 
       {/* Meta (collapsed preview) */}
       {log.meta && Object.keys(log.meta).length > 0 && (
-        <details className="flex-shrink-0">
+        <details className="shrink-0">
           <summary className="text-[10px] uppercase font-bold opacity-30 cursor-pointer hover:opacity-60">
             meta
           </summary>

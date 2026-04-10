@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func as sa_func
+from sqlalchemy import cast, func as sa_func, or_, String
 from sqlalchemy.orm import Session
 
 from app.auth import require_user
@@ -23,20 +23,25 @@ def list_logs(
     db: Session = Depends(get_db),
     user: str = Depends(require_user),
 ):
-    # Subquery: most-recent log timestamp per candidate (used to sort groups)
+    # Subquery: most-recent log timestamp per group (candidate_id or NULL).
+    # Coalesce NULL candidate_id to -1 so orphan logs form one sortable group.
+    group_key = sa_func.coalesce(ProcessingLog.candidate_id, -1)
     max_ts_sub = (
         db.query(
-            ProcessingLog.candidate_id,
+            group_key.label("gk"),
             sa_func.max(ProcessingLog.created_at).label("max_ts"),
         )
-        .group_by(ProcessingLog.candidate_id)
+        .group_by(group_key)
         .subquery()
     )
 
     q = (
         db.query(ProcessingLog, Candidate.name, Candidate.email)
         .outerjoin(Candidate, ProcessingLog.candidate_id == Candidate.id)
-        .outerjoin(max_ts_sub, ProcessingLog.candidate_id == max_ts_sub.c.candidate_id)
+        .outerjoin(
+            max_ts_sub,
+            sa_func.coalesce(ProcessingLog.candidate_id, -1) == max_ts_sub.c.gk,
+        )
     )
     if step:
         q = q.filter(ProcessingLog.step == step)
@@ -46,13 +51,20 @@ def list_logs(
         q = q.filter(ProcessingLog.candidate_id == candidate_id)
     if email:
         safe = email.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        q = q.filter(Candidate.email.ilike(f"%{safe}%", escape="\\"))
+        # Search both candidate email AND the sender field in log meta
+        # so orphan logs (non-application emails) are findable too.
+        q = q.filter(
+            or_(
+                Candidate.email.ilike(f"%{safe}%", escape="\\"),
+                cast(ProcessingLog.meta["sender"].astext, String).ilike(f"%{safe}%", escape="\\"),
+            )
+        )
 
-    # Group by candidate: newest-active candidate first, chronological within group.
-    # System logs (candidate_id IS NULL) sort to the end.
+    # Group by candidate: newest-active group first, chronological within group.
+    # Orphan logs (candidate_id IS NULL) sort by their own max_ts alongside candidates.
     rows = (
         q.order_by(
-            max_ts_sub.c.max_ts.desc().nullslast(),
+            max_ts_sub.c.max_ts.desc(),
             ProcessingLog.candidate_id,
             ProcessingLog.created_at.asc(),
         )
@@ -71,7 +83,7 @@ def list_logs(
             created_at=log.created_at,
             candidate_id=log.candidate_id,
             candidate_name=cand_name,
-            candidate_email=cand_email,
+            candidate_email=cand_email or (log.meta or {}).get("sender"),
         )
         for log, cand_name, cand_email in rows
     ]
