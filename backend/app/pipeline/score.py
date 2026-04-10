@@ -59,8 +59,10 @@ After scoring all parameters, the weighted average across all dimensions (using 
 2. Cite specific evidence from the profile (project names, metrics, technologies, timelines). If no evidence exists for a dimension, score ≤20 and state "No evidence found."
 3. Weight shipped production work over credentials, side projects over certifications, measurable outcomes over descriptions.
 4. Be skeptical of vague claims ("built scalable systems," "led a team") without concrete details.
-5. Do NOT penalize for lack of formal credentials if builder evidence is strong.
-6. Empty or sparse GitHub should not override strong signals elsewhere (many builders work in private repos), but do not compensate for missing evidence either — if GitHub is the only source for technical depth and it's empty, that dimension scores low.
+5. Treat relative metrics without baselines as weak evidence. "Increased revenue 10x" or "reduced latency by 90%" means nothing without the starting point — 10x on $100 is not impressive, 10x on $1M is. If the candidate omits the base, treat the metric as unverifiable and score it in the 21–40 band for that dimension.
+6. Experience level matters. Candidates with fewer years of experience should score lower on dimensions like shipped_products and technical_depth unless they show unusually strong evidence of outsized impact relative to their tenure.
+7. Do NOT penalize for lack of formal credentials if builder evidence is strong.
+8. Empty or sparse GitHub should not override strong signals elsewhere (many builders work in private repos), but do not compensate for missing evidence either — if GitHub is the only source for technical depth and it's empty, that dimension scores low.
 
 ## Tier 1 reference (allow-list)
 Use this static list for O(1) name matching. When a candidate's education or employer exactly matches a name below, treat it as a strong positive signal for the relevant rubric dimensions without needing external lookup or judgment.
